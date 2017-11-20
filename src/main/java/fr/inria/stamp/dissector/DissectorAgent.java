@@ -18,29 +18,14 @@ public class DissectorAgent {
     public static void agentmain(String agentArgs, Instrumentation inst) {
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            StaticDatabase.instance().flush();
+            StaticDatabase.instance().flush("output.txt"); //TODO: Change
         
         }));
 
         //TODO: Set the filter to a given set of methods, infere the classes from there
-        InspectorTransformer transformer = new InspectorTransformer();
+        MethodTransformer transformer = new MethodTransformer();
 
         inst.addTransformer(transformer);
-//
-//        inst.addTransformer(new ClassFileTransformer() {
-//            @Override
-//            public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
-//                return classfileBuffer;
-//            }
-//        });
-
-        //System.out.println("HERE");
-
-
-//        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-//            //System.out.println("HERE");
-//        }));
-        
     }
 
 }
