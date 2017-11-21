@@ -48,8 +48,8 @@
                 <configuration>
                     <archive>
                         <manifestEntries>
-                            <Premain-Class>fr.inria.stamp.inspector.InspectorAgent</Premain-Class>
-                            <Agent-Class>fr.inria.stamp.inspector.InspectorAgent</Agent-Class>
+                            <Premain-Class>fr.inria.stamp.dissector.DissectorAgent</Premain-Class>
+                            <Agent-Class>fr.inria.stamp.dissector.DissectorAgent</Agent-Class>
                             <Can-Redefine-Classes>true</Can-Redefine-Classes>
                             <Can-Retransform-Classes>true</Can-Retransform-Classes>
                         </manifestEntries>
