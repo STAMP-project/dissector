@@ -1,4 +1,4 @@
-package fr.inria.stamp.inspector.test;
+package fr.inria.stamp.dissector.test;
 
 //TODO: Find a way to execute this as a unit test
 
@@ -18,10 +18,12 @@ public class DummyInputClass {
         DummyInputClass dummy = new DummyInputClass();
         dummy.sayHi();
         System.out.println(dummy.getAge());
-
+        dummy.sayHiTo("Someone");
     }
 
     public void sayHi() { System.out.println("Hi"); }
+
+    public void sayHiTo(String name) { System.out.println("Hi " + name); }
 
     public int getAge() { return 1; }
 
