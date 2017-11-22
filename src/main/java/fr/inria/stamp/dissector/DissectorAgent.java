@@ -1,21 +1,15 @@
 package fr.inria.stamp.dissector;
 
+import javassist.CtBehavior;
+import javassist.CtClass;
+
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.lang.instrument.ClassFileTransformer;
-import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.ProtectionDomain;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
-import fr.inria.stamp.dissector.StaticDatabase;
-import javassist.CtBehavior;
-import javassist.CtClass;
 
 public class DissectorAgent {
 
@@ -25,51 +19,74 @@ public class DissectorAgent {
 
     public static void agentmain(String agentArgs, Instrumentation inst) {
 
+        ArgsParser argsParser = new ArgsParser();
+        argsParser.parse(agentArgs);
+        if(argsParser.hasErrors()) {
+            for(String msg: argsParser.getErrors())
+                System.err.println();
+            System.exit(1);
+        }
+
+        InputParser inputParser = new InputParser();
+
+        try(BufferedReader reader = Files.newBufferedReader(Paths.get(argsParser.getInputPath()))) {
+
+            inputParser.parse(reader.lines());
+            if(inputParser.hasErrors()) {
+                System.err.print("Errors were found while processing the input file at lines:");
+                for(int line: inputParser.getLinesWithError()) {
+                    System.err.print(" ");
+                    System.err.print(line);
+                }
+                System.err.println(".");
+                System.exit(2);
+            }
+
+            if(!inputParser.hasTargets()) {
+                System.err.println("No target found on input file.");
+                System.exit(2);
+            }
+
+        }
+        catch (IOException exc) {
+            System.err.println("Unexpected error while opening the input file: " + exc.getMessage());
+            System.exit(1);
+        }
+
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 StaticDatabase.instance().flush("output");
-            }catch(IOException exc) {
-                System.out.println("Could not write results: " + exc.getMessage());
-                exc.printStackTrace();
+            } catch(IOException exc) {
+                System.err.println("Unexpected error while writing the output files: " + exc.getMessage());
+                System.exit(3);
             }
         }));
 
-        //TODO: Args validation
-        Set<String> methods = loadMethods(agentArgs);
-        MethodTransformer transformer = new MethodTransformer(
-                /*getClassPredicate(methods),*/
-                (aClass) -> true,
-                getMethodPredicate(methods));
-        inst.addTransformer(transformer);
+        instrument(inputParser.getMethods(), inputParser.getClasses(), inst);
     }
 
-    protected static Set<String> loadMethods(String path) {
-        try(BufferedReader reader = Files.newBufferedReader(Paths.get(path))){
-            return reader.lines()
-                    .map((str) ->  str.substring(0, str.indexOf(':')))
-                    .collect(Collectors.toSet());
-        }catch (IOException exc) {
-            //TODO: Improve
-            exc.printStackTrace();
-            throw new AssertionError("Failed to load the input file");
-        }
+    protected static void instrument(Set<String> methods, Set<String> classes, Instrumentation inst) {
+        inst.addTransformer( new MethodTransformer(
+                getClassPredicate(classes),
+                getMethodPredicate(methods)
+        ));
     }
 
     protected static Predicate<CtBehavior> getMethodPredicate(Set<String> methods) {
-        return (method) -> methods.contains(method.getLongName());
+        if(methods.size() == 0)
+            return (m) -> true;
+        return (m) -> methods.contains(m.getLongName());
     }
 
-    protected static Predicate<CtClass> getClassPredicate(Set<String> methods) {
-        //FIXME: Should be the last index of . before (
-        Set<String> classes = methods.stream()
-                                        .map((str) -> str.substring(str.indexOf('(')))
-                                        .collect(Collectors.toSet());
-
-        return (aClass) -> {
-            System.out.println(aClass.getName());
-           return classes.contains(aClass.getName());
-        };
+    protected static Predicate<CtClass> getClassPredicate(Set<String> classes) {
+        if(classes.size() == 0) {
+            return (c) -> true;
+        }
+        return (c) -> classes.contains(c.getName());
 
     }
+
+
 
 }
