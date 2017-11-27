@@ -7,12 +7,18 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.function.Predicate;
+
 
 
 public class MethodTransformer implements ClassFileTransformer {
 
-    public MethodTransformer() { this((x)->true, (x) -> true); }
+    public MethodTransformer() { this( c ->true, m -> true); }
+
+    public MethodTransformer(Set<String> targetClasses, Set<String> targetMethods) {
+        this( c -> targetClasses.contains(c.getName()), m -> targetMethods.contains(m.getLongName()) );
+    }
 
     public MethodTransformer(Predicate<CtBehavior> targetMethods) { this((x)->true, targetMethods); }
 
@@ -37,10 +43,16 @@ public class MethodTransformer implements ClassFileTransformer {
     {
 
         try {
+            if(className == null) { //Weird but might happen
+                return classFileBuffer;
+            }
+
             ClassPool pool = ClassPool.getDefault();
+
             CtClass theClass = pool.get(className.replace('/', '.'));
 
             if(isClassToSkip(theClass)) {
+                classSkippedEvent.invokeWith(theClass);
                 return classFileBuffer;
             }
 
@@ -50,11 +62,11 @@ public class MethodTransformer implements ClassFileTransformer {
 
             byte[] outputBuffer = theClass.toBytecode();
             theClass.detach();
+            classInstrumentedEvent.invokeWith(theClass);
             return outputBuffer;
         }
         catch(Throwable exc) {
-            //TODO: Improve notification
-            System.out.println(exc.getMessage());
+            instrumentationErrorEvent.invokeWith(exc);
             return classFileBuffer;
         }
     }
@@ -89,5 +101,15 @@ public class MethodTransformer implements ClassFileTransformer {
     protected boolean isClassToSkip(CtClass aClass) { return isOurs(aClass) || !targetClasses.test(aClass); }
 
     private boolean isOurs(CtClass aClass) { return aClass.getPackageName().equals("fr.inria.stamp.dissector"); }
+
+    private Event<CtClass> classSkippedEvent = new Event<>();
+    public Event<CtClass> classSkipped() { return classSkippedEvent; }
+
+    private Event<Throwable> instrumentationErrorEvent = new Event<>();
+    public Event<Throwable> instrumentationError () { return instrumentationErrorEvent; }
+
+
+    private Event<CtClass> classInstrumentedEvent = new Event<>();
+    public Event<CtClass> classInstrumented() { return classInstrumentedEvent; }
 
 }

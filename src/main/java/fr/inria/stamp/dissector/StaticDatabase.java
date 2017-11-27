@@ -106,7 +106,10 @@ public class StaticDatabase {
     protected void flushErrors(String path) throws IOException{
         try(BufferedWriter writer = Files.newBufferedWriter(Paths.get(path, "errors.txt"));) {
             for(String message: errors) {
-                writer.write(message);
+                if(message == null)
+                    writer.write("[null]");
+                else
+                    writer.write(message);
                 writer.newLine();
             }
         }

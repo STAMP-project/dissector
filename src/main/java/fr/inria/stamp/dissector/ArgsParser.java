@@ -1,6 +1,8 @@
 package fr.inria.stamp.dissector;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -70,7 +72,7 @@ class ArgsParser {
     }
 
     protected String defaultOutput() {
-        return "./dissector-output-" + String.valueOf(System.currentTimeMillis());
+        return "./dissector-output-" + getLogSuffix();
     }
 
     public String getInputPath() {
@@ -87,6 +89,12 @@ class ArgsParser {
 
     public boolean hasErrors() {
         return errors.size() > 0;
+    }
+
+    public static String getLogSuffix() {
+        Date date = new Date(System.currentTimeMillis());
+        SimpleDateFormat format = new SimpleDateFormat( "yyyyMMddHHmmssSSS");
+        return format.format(date);
     }
 
 }
