@@ -31,8 +31,8 @@ public class MethodTransformer implements ClassFileTransformer {
         this.targetClasses = targetClasses;
     }
 
-    protected Predicate<CtBehavior> targetMethods;
-    protected Predicate<CtClass> targetClasses;
+    private Predicate<CtBehavior> targetMethods;
+    private Predicate<CtClass> targetClasses;
 
     public byte[] transform(ClassLoader loader,
                             String className,
@@ -52,36 +52,44 @@ public class MethodTransformer implements ClassFileTransformer {
             CtClass theClass = pool.get(className.replace('/', '.'));
 
             if(isClassToSkip(theClass)) {
-                classSkippedEvent.invokeWith(theClass);
                 return classFileBuffer;
             }
 
-            Arrays.stream(theClass.getDeclaredBehaviors())
-                    .filter(this::isValidMethodTarget)
-                    .forEach(this::instrument);
+//            Arrays.stream(theClass.getDeclaredBehaviors())
+//                    .filter(this::isValidMethodTarget)
+//                    .forEach(this::instrument);
+
+            for (CtBehavior behavior :
+                    theClass.getDeclaredBehaviors()) {
+                if (!isValidMethodTarget(behavior)) {
+                    methodSkippedEvent.invokeWith(behavior);
+                    continue;
+                }
+                instrument(behavior);
+                methodInstrumentedEvent.invokeWith(behavior);
+            }
 
             byte[] outputBuffer = theClass.toBytecode();
             theClass.detach();
-            classInstrumentedEvent.invokeWith(theClass);
             return outputBuffer;
         }
         catch(Throwable exc) {
-            instrumentationErrorEvent.invokeWith(exc);
+            StaticDatabase.error(exc.getClass().getName() + ": " + exc.getMessage());
             return classFileBuffer;
         }
     }
 
     protected String getEnterProbe(int id) {
-        return String.format("{fr.inria.stamp.dissector.StaticDatabase.instance().enter(%d, $args);}", id);
+        return String.format("{fr.inria.stamp.dissector.StaticDatabase.enter(%d, $args);}", id);
     }
 
     protected String getExitProbe(int id) {
-        return String.format("{fr.inria.stamp.dissector.StaticDatabase.instance().exit(%d);}", id);
+        return String.format("{fr.inria.stamp.dissector.StaticDatabase.exit(%d);}", id);
     }
 
     protected void instrument(CtBehavior behavior) {
         try {
-            int givenID = StaticDatabase.instance().add(behavior);
+            int givenID = StaticDatabase.add(behavior);
             behavior.insertBefore(getEnterProbe(givenID));
             behavior.insertAfter(getExitProbe(givenID), true);
         }
@@ -102,14 +110,12 @@ public class MethodTransformer implements ClassFileTransformer {
 
     private boolean isOurs(CtClass aClass) { return aClass.getPackageName().equals("fr.inria.stamp.dissector"); }
 
-    private Event<CtClass> classSkippedEvent = new Event<>();
-    public Event<CtClass> classSkipped() { return classSkippedEvent; }
 
-    private Event<Throwable> instrumentationErrorEvent = new Event<>();
-    public Event<Throwable> instrumentationError () { return instrumentationErrorEvent; }
+    public final Event<CtBehavior> methodInstrumentedEvent = new Event<>();
+    public final Event<CtBehavior> methodSkippedEvent = new Event<>();
 
-
-    private Event<CtClass> classInstrumentedEvent = new Event<>();
-    public Event<CtClass> classInstrumented() { return classInstrumentedEvent; }
+//    public final Event<CtClass> classSkippedEvent = new Event<>();
+//    public final Event<Throwable> instrumentationErrorEvent = new Event<>();
+//    public final Event<CtClass> classInstrumentedEvent = new Event<>();
 
 }

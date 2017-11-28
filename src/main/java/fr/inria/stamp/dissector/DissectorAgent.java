@@ -25,37 +25,53 @@ public class DissectorAgent {
         //Load list of target methods
         final FileLogger logger = new FileLogger(Paths.get(args.getOutputPath(), "dissector.log"));
         logger.log(agentArgs);
+        logger.logWithTime("Started");
+
+        try {
+            StaticDatabase.open(args.getOutputPath());
+        }
+        catch(IOException exc) {
+            logger.log("Error while opening the database: " + exc.getMessage());
+            System.exit(2);
+
+        }
 
         InputParser input = parseInput(args.getInputPath(), logger);
 
         //Save results
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
-                StaticDatabase.instance().flush(args.getOutputPath());
+                StaticDatabase.close();
             } catch(IOException exc) {
                 logger.log("Unexpected error while writing the output files: " + exc.getMessage());
                 System.exit(3);
             }
+            finally {
+                logger.logWithTime("Finished");
+            }
         }));
 
-        instrument(inst, input);
+        instrument(inst, input, logger);
 
     }
 
-    private static void instrument(Instrumentation inst, InputParser input) {
+    private static void instrument(Instrumentation inst, InputParser input, FileLogger logger) {
         MethodTransformer transformer = new MethodTransformer(
                 input.getClasses(),
                 input.getMethods());
 
-        transformer.instrumentationError().register(
-                exc ->
-                    StaticDatabase.instance().error(
-                    exc.getClass().getName() + ":\n" +
-                    //Some expections have null messages
-                    (exc.getMessage() == null ? "":exc.getMessage()) + "\n\t" +
-                    Arrays.stream(exc.getStackTrace())
-                            .map(StackTraceElement::toString)
-                            .collect(Collectors.joining("\n\t"))));
+        transformer.methodInstrumentedEvent.register(m -> logger.log("[Transformed] " + m.getLongName()));
+        transformer.methodSkippedEvent.register(m -> logger.log("[Skipped]" + m.getLongName()));
+
+//        transformer.instrumentationErrorEvent.register(
+//                exc ->
+//                    StaticDatabase.error(
+//                    exc.getClass().getName() + ":\n" +
+//                    //Some expections have null messages
+//                    (exc.getMessage() == null ? "":exc.getMessage()) + "\n\t" +
+//                    Arrays.stream(exc.getStackTrace())
+//                            .map(StackTraceElement::toString)
+//                            .collect(Collectors.joining("\n\t"))));
 
         inst.addTransformer(transformer);
     }

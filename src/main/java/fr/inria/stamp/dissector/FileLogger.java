@@ -5,10 +5,16 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.FieldPosition;
+import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class FileLogger {
 
     private BufferedWriter writer;
+    SimpleDateFormat dateFormat = new SimpleDateFormat("[yyyy-MM-dd HH:mm:ss:SSSZ]");
 
     public FileLogger(Path path) {
         try {
@@ -40,6 +46,10 @@ public class FileLogger {
         for(String str: args) {
             log(str);
         }
+    }
+
+    public void logWithTime(String message) {
+        log(dateFormat.format(new Date(System.currentTimeMillis())) + " " + message);
     }
 
     public void log(String message, Object... args) {
