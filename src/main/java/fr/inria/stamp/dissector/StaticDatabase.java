@@ -30,42 +30,62 @@ public class StaticDatabase {
 
     public final static Event<String> operationError = new Event<>();
 
-    private static void onOperationError(String message, Object... args) {
+    private synchronized static void onOperationError(String message, Object... args) {
+
         operationError.invokeWith(String.format(message, args));
     }
 
     public synchronized static int add(CtBehavior method) {
+
         try {
             transformed.write(String.format("%d:%s:%d\n", ID, method.getLongName(), method.getModifiers()));
-        }
-        catch(IOException exc) {
+        } catch (IOException exc) {
             onOperationError("Unexpected error adding %s. Message: %s", method.getLongName(), exc.getMessage());
         }
         return ID++;
+
     }
 
-    public synchronized static void enter(int id, Object[] values) {
-        action(id, 1);
-        addParameters(values);
+    public static void enter(int id, Object[] values) {
+        synchronized (actions) {
+            action(id, 1);
+            addParameters(values);
+        }
     }
 
-    public static void addParameters(Object[] values) {
+    private static void addParameters(Object[] values) {
         try {
             parameters.write(String.valueOf(values.length) + "\n");
-            parameters.write(Arrays.stream(values).map(Object::toString).collect(Collectors.joining("\n")));
+            parameters.write(Arrays.stream(values).map(StaticDatabase::escape).collect(Collectors.joining("\n")));
+            if(values != null && values.length > 0)
+                parameters.write("\n");
         }
         catch(IOException exc) {
             onOperationError("Error reporting parameter values");
         }
     }
 
-    public static void exit(int id) {
-        action(id, 0);
+    private static String escape(Object input) {
+        if(input == null)
+            return "[null value]";
+        return input.toString()
+                .replace("\n", "\\n");
     }
 
-    public synchronized static  void action(int id, int type) {
+    public static void exit(int id) {
+        synchronized (actions) {
+            action(id, 0);
+        }
+    }
+
+    private static void action(int id, int type) {
         try {
-            actions.write(String.format("%d:%d:%d:%d\n", id, type, Thread.currentThread().getId(), type));
+
+            actions.write(String.format("%d:%d:%d:%d\n",
+                    id,
+                    type,
+                    Thread.currentThread().getId(),
+                    Thread.currentThread().getStackTrace().length));
         }catch (IOException exc) {
             onOperationError("Error reporting method %s with id %d", (type==0)?"exit":"call", id);
         }
