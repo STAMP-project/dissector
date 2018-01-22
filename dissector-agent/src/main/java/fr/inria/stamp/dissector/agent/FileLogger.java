@@ -1,4 +1,4 @@
-package fr.inria.stamp.dissector;
+package fr.inria.stamp.dissector.agent;
 
 import java.io.BufferedWriter;
 import java.io.IOException;

@@ -1,6 +1,7 @@
-package fr.inria.stamp.dissector;
+package fr.inria.stamp.dissector.agent;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedList;
@@ -10,7 +11,7 @@ class ArgsParser {
     //NOTE: If the command line arguments grow in compexity use JCommander
 
     private String inputPath;
-    private String outputPath;
+    private String logPath;
 
     private List<String> errors = new LinkedList<>();
 
@@ -27,9 +28,9 @@ class ArgsParser {
         }
 
         inputPath = args[0];
-        outputPath = (args.length >= 2)? args[1] : defaultOutput();
+        logPath = (args.length >= 2)? args[1] : getDefaultLogPath();
 
-        return isInputValid() && isOutputValid();
+        return isInputValid() && isLogFileValid();
 
     }
 
@@ -52,35 +53,49 @@ class ArgsParser {
         return true;
     }
 
-    protected boolean isOutputValid() {
-        File output = new File(outputPath);
-        if(output.exists()) {
+    protected boolean isLogFileValid() {
+        File log = new File(logPath);
+        if(log.exists()) {
 
-            if(!output.isDirectory()) {
-                errors.add("Output path " + outputPath + " is not a directory.");
+            if(!log.isFile()) {
+                errors.add("Log path " + logPath + " is not a file.");
                 return false;
             }
 
-            if(!output.canWrite()) {
-                errors.add("Can not write to output directory " + outputPath);
+            if(!log.canWrite()) {
+                errors.add("Can not write to log file " + logPath);
                 return false;
             }
         }
+        else {
 
-        //If the output directory does not exist it will be considered as valid
+            try {
+                log.createNewFile();
+            }
+            catch (IOException exc) {
+                errors.add("Can not create log file in: " + logPath + ". Details: " + exc.getMessage());
+                return false;
+            }
+        }
         return true;
-    }
-
-    protected String defaultOutput() {
-        return "./dissector-output-" + getLogSuffix();
     }
 
     public String getInputPath() {
         return inputPath;
     }
 
-    public String getOutputPath() {
-        return outputPath;
+    public String getLogPath() {
+        return logPath;
+    }
+
+    protected String getDefaultLogPath() {
+        return "./dissector-" + getLogSuffix()  + ".log";
+    }
+
+    public static String getLogSuffix() {
+        Date date = new Date(System.currentTimeMillis());
+        SimpleDateFormat format = new SimpleDateFormat( "yyyyMMddHHmmssSSS");
+        return format.format(date);
     }
 
     public List<String> getErrors() {
@@ -89,12 +104,6 @@ class ArgsParser {
 
     public boolean hasErrors() {
         return errors.size() > 0;
-    }
-
-    public static String getLogSuffix() {
-        Date date = new Date(System.currentTimeMillis());
-        SimpleDateFormat format = new SimpleDateFormat( "yyyyMMddHHmmssSSS");
-        return format.format(date);
     }
 
 }

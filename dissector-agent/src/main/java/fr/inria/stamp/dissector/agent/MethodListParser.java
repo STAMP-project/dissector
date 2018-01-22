@@ -1,6 +1,9 @@
-package fr.inria.stamp.dissector;
+package fr.inria.stamp.dissector.agent;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -10,7 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-class InputParser {
+public class MethodListParser {
 
     private static Pattern SIGNATURE;
 
@@ -27,8 +30,8 @@ class InputParser {
         SIGNATURE = Pattern.compile(signature);
     }
 
-    private HashSet<String> methods = new HashSet<>();
-    private HashSet<String> classes = new HashSet<>();
+    private List<String> methods = new LinkedList<>();
+    private Set<String> classes = new HashSet<>();
     private LinkedList<Integer> errors = new LinkedList<>();
 
 
@@ -48,8 +51,15 @@ class InputParser {
             }
             position.incrementAndGet();
         });
-
         return !hasErrors();
+    }
+
+    public static MethodListParser getParser(String path) throws IOException {
+        MethodListParser parser = new MethodListParser();
+        try(BufferedReader reader = Files.newBufferedReader(Paths.get(path))) {
+            parser.parse(reader.lines());
+            return parser;
+        }
     }
 
     public boolean hasErrors() {
@@ -62,7 +72,7 @@ class InputParser {
         errors.clear();
     }
 
-    public Set<String> getMethods() {
+    public List<String> getMethods() {
         return methods;
     }
 
