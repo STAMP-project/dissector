@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 
 public class Event<T> {
 
-    protected List<Consumer<T>>  delegates = new LinkedList<Consumer<T>>();
+    private List<Consumer<T>>  delegates = new LinkedList<Consumer<T>>();
 
     public void register(Consumer<T> delegate) {
         if(!delegates.contains(delegate)) {

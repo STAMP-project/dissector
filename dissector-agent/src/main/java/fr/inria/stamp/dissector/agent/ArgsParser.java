@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
 
 class ArgsParser {
     //NOTE: If the command line arguments grow in compexity use JCommander
@@ -13,57 +11,57 @@ class ArgsParser {
     private String inputPath;
     private String logPath;
 
-    private List<String> errors = new LinkedList<>();
+    private String error = "";
 
     public boolean parse(String args) {
         return parse(args.split(":"));
     }
 
     public boolean parse(String... args) {
-        errors.clear();
+        error = "";
 
         if(args.length == 0) {
-            errors.add("At least an input file should be specified");
+            setError("At least an input file should be specified");
             return false;
         }
 
         inputPath = args[0];
         logPath = (args.length >= 2)? args[1] : getDefaultLogPath();
 
-        return isInputValid() && isLogFileValid();
+        return  (validInput = parseInputPath()) &&  (validLog = parseLogPath());
 
     }
 
-    protected boolean isInputValid() {
+    private boolean parseInputPath() {
         //It is so tempting to add a list of predicates here :)
         // and some overcomplicated validation mechanism
         File input = new File(inputPath);
         if(!input.exists()) {
-            errors.add("Input file " + inputPath + " does not exist.");
+            setError("Input file " + inputPath + " does not exist.");
             return false;
         }
         if(!input.isFile()) {
-            errors.add("Input " + inputPath + " is not a file");
+            setError("Input " + inputPath + " is not a file");
             return false;
         }
         if(!input.canRead()) {
-            errors.add("Can not read input file " + inputPath);
+            setError("Can not read input file " + inputPath);
             return false;
         }
         return true;
     }
 
-    protected boolean isLogFileValid() {
+    private boolean parseLogPath() {
         File log = new File(logPath);
         if(log.exists()) {
 
             if(!log.isFile()) {
-                errors.add("Log path " + logPath + " is not a file.");
+                setError("Log path " + logPath + " is not a file.");
                 return false;
             }
 
             if(!log.canWrite()) {
-                errors.add("Can not write to log file " + logPath);
+                setError("Can not write to log file " + logPath);
                 return false;
             }
         }
@@ -73,7 +71,7 @@ class ArgsParser {
                 log.createNewFile();
             }
             catch (IOException exc) {
-                errors.add("Can not create log file in: " + logPath + ". Details: " + exc.getMessage());
+                setError("Can not create log file in: " + logPath + ". Details: " + exc.getMessage());
                 return false;
             }
         }
@@ -88,6 +86,17 @@ class ArgsParser {
         return logPath;
     }
 
+    private boolean validInput = false;
+    public boolean isInputPathValid() {
+        return validInput;
+
+    }
+
+    private boolean validLog = false;
+    public boolean isLogPathValid() {
+        return validLog;
+    }
+
     protected String getDefaultLogPath() {
         return "./dissector-" + getLogSuffix()  + ".log";
     }
@@ -98,12 +107,16 @@ class ArgsParser {
         return format.format(date);
     }
 
-    public List<String> getErrors() {
-        return errors;
+    public String getError() {
+        return error;
+    }
+
+    private void setError(String error) {
+        this.error = error;
     }
 
     public boolean hasErrors() {
-        return errors.size() > 0;
+        return !isInputPathValid() || !isLogPathValid();
     }
 
 }

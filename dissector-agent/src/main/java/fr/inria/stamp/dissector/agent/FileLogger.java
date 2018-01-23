@@ -5,16 +5,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.DateFormat;
-import java.text.FieldPosition;
-import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class FileLogger {
 
     private BufferedWriter writer;
-    SimpleDateFormat dateFormat = new SimpleDateFormat("[yyyy-MM-dd HH:mm:ss:SSSZ]");
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSSZ");
 
     public FileLogger(Path path) {
         try {
@@ -26,9 +23,7 @@ public class FileLogger {
         }
     }
 
-    public FileLogger(String path) {
-        this(Paths.get(path));
-    }
+    public FileLogger(String path) { this(Paths.get(path)); }
 
     public void log(String line) {
         if(writer == null) return; //Nothing to say
@@ -42,18 +37,12 @@ public class FileLogger {
         }
     }
 
-    public void log(String... args) {
-        for(String str: args) {
-            log(str);
-        }
-    }
-
     public void logWithTime(String message) {
-        log(dateFormat.format(new Date(System.currentTimeMillis())) + " " + message);
+        log(dateFormat.format(new Date(System.currentTimeMillis())), message);
     }
 
-    public void log(String message, Object... args) {
-        log(String.format(message, args));
+    public void log(String label, String message, Object... args) {
+        log(String.format("[%S] %s", label, String.format(message, args)));
     }
 
 

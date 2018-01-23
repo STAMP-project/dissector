@@ -1,10 +1,7 @@
 package fr.inria.stamp.dissector.agent;
 
 import java.lang.instrument.Instrumentation;
-import java.nio.file.Paths;
 import java.util.stream.Collectors;
-
-
 
 
 public class DissectorAgent {
@@ -20,36 +17,39 @@ public class DissectorAgent {
 
     public static void agentmain(String agentArgs, Instrumentation inst) {
 
-        //Agent arguments
         ArgsParser args = new ArgsParser();
         args.parse(agentArgs);
 
-        if (args.hasErrors()) {
-
-            for (String message : args.getErrors())
-                System.err.println(message);
-
-            System.exit(ARGUMENT_ERROR); //Errors in arguments
+        if(!args.isLogPathValid()) {
+            System.exit(ARGUMENT_ERROR);
         }
+        FileLogger logger = new FileLogger(args.getLogPath());
 
-        final FileLogger logger = new FileLogger(Paths.get(args.getLogPath()));
+        if(!args.isInputPathValid()) {
+            logger.log("argument error", args.getError());
+            System.exit(ARGUMENT_ERROR);
+        }
 
         try {
+            logger.logWithTime("Started");
             MethodListParser input = MethodListParser.getParser(args.getInputPath());
             if (input.hasErrors()) {
-                String message = "Input error in lines: " + input.getLinesWithError().stream().map(i -> i.toString()).collect(Collectors.joining(","));
-                logger.log(message);
-                System.err.println(message);
+                String message = "Wrong format in lines: " + input.getLinesWithError().stream().map(i -> i.toString()).collect(Collectors.joining(","));
+                logger.log("input error", message);
                 System.exit(INPUT_ERROR);
             }
-            inst.addTransformer(new MethodTransformer(input.getMethods(), input.getClasses()));
-        } catch (Throwable exc) {
-            String message = "Error: " + exc.getMessage();
-            logger.log(message);
-            System.err.println(message);
+            MethodTransformer transformer = new MethodTransformer(input.getMethods(), input.getClasses());
+
+            transformer.behaviorInstrumented.register( beh -> logger.log("instrumented", beh.getLongName()));
+            transformer.transformationError.register( exc -> logger.log("instrumentation error", exc.getMessage()));
+
+            inst.addTransformer(transformer);
+
+        }
+        catch (Throwable exc) {
+            logger.log("error", exc.getMessage());
             System.exit(UNEXPECTED_ERROR);
         }
-
 
     }
 

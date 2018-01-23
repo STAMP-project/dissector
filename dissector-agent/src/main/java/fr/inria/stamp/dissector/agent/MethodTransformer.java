@@ -5,7 +5,6 @@ import javassist.bytecode.AccessFlag;
 
 import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
@@ -14,15 +13,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class MethodTransformer implements ClassFileTransformer {
 
-    public MethodTransformer(List<String> methods) {
-        this(methods, Collections.emptySet());
-    }
-
     public MethodTransformer(List<String> methods, Set<String> classes) {
 
         if(classes == null) throw new NullPointerException("Set of classes is null");
         if(methods == null) throw new NullPointerException("Stream of methods is null");
-
 
         //We want to keep the position in the stream
         //And searching fast, but don't want to sort them in any way
@@ -40,6 +34,7 @@ public class MethodTransformer implements ClassFileTransformer {
         methods.forEach( m -> {
             methodPosition.put(m, position.getAndIncrement());
         } );
+
     }
 
     private Set<String> classes;
@@ -66,8 +61,8 @@ public class MethodTransformer implements ClassFileTransformer {
 
             for(CtBehavior behavior: theClass.getDeclaredBehaviors()) {
                 if(mustSkip(behavior)) continue;
-
                 instrument(behavior);
+                behaviorInstrumented.invokeWith(behavior);
             }
 
             byte[] outputBuffer = theClass.toBytecode();
@@ -77,13 +72,13 @@ public class MethodTransformer implements ClassFileTransformer {
 
         }
         catch(Throwable exc) {
-            transformationError.invokeWith("Error transforming " + classBeingRedefined.getName() + ". Details: " + exc.getMessage());
+            transformationError.invokeWith(exc);
             return classFileBuffer;
         }
     }
 
     private String getInstruction(String annotation, int id) {
-        return String.format("{System.err.print(\"[[D][%s:%d:\" + Thread.currentThread().getId() + \":\" + Thread.currentThread().getStackTrace().length + \"]]\");}",
+        return String.format("{System.err.print(\"\\n[[D][%s:%d:\" + Thread.currentThread().getId() + \":\" + Thread.currentThread().getStackTrace().length + \"]]\\n\");}",
                 annotation, id);
     }
 
@@ -103,13 +98,12 @@ public class MethodTransformer implements ClassFileTransformer {
             behavior.insertAfter(getExitProbe(givenID), true);
         }
         catch (CannotCompileException exc) {
-            //Probes should always compile
             throw new AssertionError("An error was found while compiling the probes: " + exc.getMessage(), exc);
         }
     }
 
     private boolean mustSkip(CtBehavior behavior) {
-        return isNotATarget(behavior) || methodPosition.containsKey(behavior);
+        return isNotATarget(behavior) || !methodPosition.containsKey(behavior.getLongName());
     }
 
     private boolean isNotATarget(CtBehavior  method) {
@@ -118,10 +112,12 @@ public class MethodTransformer implements ClassFileTransformer {
         return (modifiers & check) != 0;
     }
 
-    private boolean mustSkip(CtClass aClass) { return isOurs(aClass) || classes.contains(aClass); }
+    private boolean mustSkip(CtClass aClass) { return isOurs(aClass) || !classes.contains(aClass.getName()); }
 
     private boolean isOurs(CtClass aClass) { return aClass.getPackageName().equals("fr.inria.stamp.dissector"); }
 
-    public Event<String> transformationError = new Event<>();
+    public final Event<Throwable> transformationError = new Event<>();
+
+    public final Event<CtBehavior> behaviorInstrumented = new Event<>();
 
 }
