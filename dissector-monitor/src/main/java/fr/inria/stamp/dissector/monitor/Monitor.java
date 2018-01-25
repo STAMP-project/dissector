@@ -90,11 +90,11 @@ public class Monitor extends AbstractMojo {
 
             testProcess.waitFor();
 
+            if(emulator.isCorrupt()) {
+                getLog().warn("Testing process produced a corrupt stack emulation");
+            }
+
             getLog().info("Saving final report");
-
-            Gson gson = new Gson();
-
-            getLog().info("[REPORT] " + gson.toJson(emulator.getReport()));
 
             saveReport(emulator.getReport());
 
