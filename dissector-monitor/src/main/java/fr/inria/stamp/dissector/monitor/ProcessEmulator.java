@@ -73,6 +73,8 @@ public class ProcessEmulator {
         StackEmulator.StackDistance[] distances = getSortedDistances(getAllDistances());
         List<MethodEntry> report = new LinkedList<>();
 
+        if(distances.length == 0) return report;
+
         StackEmulator.StackDistance dist = distances[0];
 
         MethodEntry methodEntry = new MethodEntry(methods.getName(dist.method));

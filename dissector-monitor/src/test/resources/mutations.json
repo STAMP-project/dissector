@@ -1,0 +1,60 @@
+{
+  "methods": [
+    {
+      "name": "partiallyTestedMethod",
+      "description": "(Ljava/lang/String;)Ljava/lang/String;",
+      "class": "TheClass",
+      "package": "path/to/class",
+      "tests": [
+        "path.to.class.TheClassTest.test1(path.to.class.TheClassTest)",
+        "path.to.class.TheClassTest.test2(path.to.class.TheClassTest)"
+      ],
+      "detected": ["m1", "m2"],
+      "not-detected": ["m3"],
+      "classification": "partially-tested",
+      "mutations": []
+    },
+    {
+      "name": "notCoveredMethod",
+      "description": "()I",
+      "class": "TheClass",
+      "package": "path/to/class",
+      "tests": [],
+      "detected": [],
+      "not-detected": ["m1", "m2"],
+      "classification": "not-covered",
+      "mutations": []
+    },
+    {
+      "name": "testedMethod",
+      "description": "()V",
+      "class": "TheClass",
+      "package": "path/to/class",
+      "tests": [
+        "path.to.class.TheClassTest.test2(path.to.class.TheClassTest)",
+        "path.to.class.TheClassTest.test3(path.to.class.TheClassTest)"
+      ],
+      "detected": ["m1", "m2"],
+      "not-detected": [],
+      "classification": "tested",
+      "mutations": []
+    },
+    {
+      "name": "pseudoTestedMethod",
+      "description": "()V",
+      "class": "TheClass",
+      "package": "path/to/class",
+      "tests": [
+        "path.to.class.TheClassTest.test1(path.to.class.TheClassTest)",
+        "path.to.class.TheClassTest.test4(path.to.class.TheClassTest)"],
+      "detected": [],
+      "not-detected": [
+        "void"
+      ],
+      "classification": "pseudo-tested",
+      "mutations": []
+    }
+  ],
+  "analysis": {"time": 0, "mutators": []
+  }
+}

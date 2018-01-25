@@ -16,7 +16,6 @@ import java.util.regex.Pattern;
 
 //TODO: Automatically insert the agent.
 //TODO: Inspect the project to gather methods
-//TODO: Receive the mutation result file(s)
 
 @Mojo(name = "execute")
 public class Monitor extends AbstractMojo {
@@ -34,7 +33,7 @@ public class Monitor extends AbstractMojo {
 
     //TODO: If no mutation file is given, extract the information from the project
 
-    @Parameter(property="mutationFile", defaultValue = "${project.build.directory}/methods.json")
+    @Parameter(property="mutationFile", defaultValue = "${project.build.directory}/mutations.json")
     private File _mutationFile;
 
     public File getMutationFile() {
@@ -56,7 +55,7 @@ public class Monitor extends AbstractMojo {
         _methodList = methodList;
     }
 
-    @Parameter(property = "output", defaultValue = "${project.build.directory}/stack.distance.json")
+    @Parameter(property = "output", defaultValue = "${project.build.directory}/distances.json")
     File _output;
 
     public File getOutput() { return  _output; }
