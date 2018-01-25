@@ -24,10 +24,12 @@ public class StackEmulator {
             return this.method == method && this.depth == depth;
         }
 
-        public int hasCode() {
+        @Override
+        public int hashCode() {
             return 37 * (37 * 13 + method) + depth;
         }
 
+        @Override
         public boolean equals(Object other) {
             if(!(other instanceof  ActivationRecord)) return false;
             ActivationRecord or = (ActivationRecord) other;
@@ -48,10 +50,12 @@ public class StackEmulator {
             this.distance = distance;
         }
 
-        public int hasCode() {
+        @Override
+        public int hashCode() {
             return 37 * (37 * (37 * 13 + method) + test) + distance;
         }
 
+        @Override
         public boolean equals(Object other) {
             if(!(other instanceof  StackDistance)) return false;
             StackDistance od = (StackDistance) other;
