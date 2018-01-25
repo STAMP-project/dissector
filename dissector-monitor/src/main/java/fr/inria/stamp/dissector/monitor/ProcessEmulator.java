@@ -8,7 +8,7 @@ public class ProcessEmulator {
 
     private MethodSet methods;
 
-    public ProcessEmulator(MethodSet methods) { this(5, methods); }
+    public ProcessEmulator(MethodSet methods) { this(6, methods); } //Thread 0 will never be used.
 
     public ProcessEmulator(int threads, MethodSet methods) {
         this.threads = new StackEmulator[threads];
@@ -53,6 +53,7 @@ public class ProcessEmulator {
     private StackEmulator.StackDistance[] getSortedDistances(Collection<StackEmulator.StackDistance> distances) {
 
         StackEmulator.StackDistance[] result = new StackEmulator.StackDistance[distances.size()];
+        distances.toArray(result);
 
         Arrays.<StackEmulator.StackDistance>sort(result, (sd1, sd2) -> {
             int cmp = sd1.method - sd2.method;

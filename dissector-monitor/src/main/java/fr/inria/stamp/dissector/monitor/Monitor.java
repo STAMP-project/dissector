@@ -56,7 +56,7 @@ public class Monitor extends AbstractMojo {
     }
 
     @Parameter(property = "output", defaultValue = "${project.build.directory}/distances.json")
-    File _output;
+    private File _output;
 
     public File getOutput() { return  _output; }
 
@@ -92,6 +92,10 @@ public class Monitor extends AbstractMojo {
 
             getLog().info("Saving final report");
 
+            Gson gson = new Gson();
+
+            getLog().info("[REPORT] " + gson.toJson(emulator.getReport()));
+
             saveReport(emulator.getReport());
 
         }
@@ -106,7 +110,7 @@ public class Monitor extends AbstractMojo {
 
     private void processErrorStream(InputStream input, ProcessEmulator emulator) {
 
-        Pattern logPattern = Pattern.compile("\\[\\[D\\]\\[(?<type>.):(?<method>\\d+):(?<thread>\\d+):(?<depth>\\d+)\\]");
+        Pattern logPattern = Pattern.compile("\\[\\[D\\]\\[(?<type>.):(?<method>\\d+):(?<thread>\\d+):(?<depth>\\d+)\\]\\]");
 
         try {
             if(input == null) {
@@ -119,14 +123,19 @@ public class Monitor extends AbstractMojo {
             String line = null;
 
             while ((line = bufferedReader.readLine()) != null) {
+
                 Matcher match = logPattern.matcher(line);
                 if(!match.matches()) continue;
 
-                if(match.group("type").equals(">"))
-                    emulator.enter(Integer.parseInt(match.group("thread")),
-                            Integer.parseInt(match.group("method")),
-                            Integer.parseInt(match.group("depth")));
+                String action = match.group("type");
+                int thread = Integer.parseInt(match.group("thread"));
+                int method = Integer.parseInt(match.group("method"));
+                int depth = Integer.parseInt(match.group("depth"));
 
+                if(action.equals(">"))
+                    emulator.enter(thread, method, depth);
+                else if(action.equals("<"))
+                    emulator.exit(thread, method, depth);
             }
         }
         catch (IOException exc) {
