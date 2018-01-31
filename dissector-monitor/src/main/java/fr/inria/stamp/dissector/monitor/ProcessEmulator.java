@@ -4,33 +4,33 @@ import java.util.*;
 
 public class ProcessEmulator {
 
-    private StackEmulator[] threads;
+    private Map<Integer, StackEmulator> threads;
 
     private MethodSet methods;
 
-    public ProcessEmulator(MethodSet methods) { this(6, methods); } //Thread 0 will never be used.
 
-    public ProcessEmulator(int threads, MethodSet methods) {
-        this.threads = new StackEmulator[threads];
+    public ProcessEmulator(MethodSet methods) {
+
+        this.threads = new HashMap<>();
         this.methods = methods;
     }
 
     public void enter(int thread, int methodID, int stackDepth) {
-
-        if(threads[thread] == null)
-            threads[thread] = new StackEmulator(methods);
-
-        threads[thread].enter(methodID, stackDepth);
-        corrupt = corrupt || threads[thread].isCorrupt();
+        StackEmulator emulator = threads.computeIfAbsent(thread, th -> new StackEmulator(methods));
+        if(emulator.isCorrupt()) return;
+        emulator.enter(methodID, stackDepth);
+        corrupt = corrupt || emulator.isCorrupt();
     }
 
     public void exit(int thread, int methodID, int stackDepth) {
-        if(threads[thread] == null) {
+
+        if(!threads.containsKey(thread)) {
             corrupt = true;
             return;
         }
-        threads[thread].exit(methodID, stackDepth);
-        corrupt = corrupt || threads[thread].isCorrupt();
+        StackEmulator emulator = threads.get(thread);
+        emulator.exit(methodID, stackDepth);
+        corrupt = corrupt || emulator.isCorrupt();
     }
 
     private boolean corrupt = false;
@@ -42,7 +42,7 @@ public class ProcessEmulator {
 
     private Set<StackEmulator.StackDistance> getAllDistances() {
         Set<StackEmulator.StackDistance> allDists = new HashSet<>();
-        for(StackEmulator thread : threads) {
+        for(StackEmulator thread : threads.values()) {
             if(thread != null)
                 allDists.addAll(thread.getDistances());
         }
@@ -104,10 +104,6 @@ public class ProcessEmulator {
         }
 
         return report;
-
-
-
-
 
     }
 
