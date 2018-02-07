@@ -6,6 +6,7 @@ import javassist.bytecode.AccessFlag;
 import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,32 +14,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class MethodTransformer implements ClassFileTransformer {
 
-    public MethodTransformer(List<String> methods, Set<String> classes) {
-
-        if(classes == null) throw new NullPointerException("Set of classes is null");
-        if(methods == null) throw new NullPointerException("Stream of methods is null");
-
-        //We want to keep the position in the stream
-        //And searching fast, but don't want to sort them in any way
-        buildTreeMap(methods);
-        this.classes = classes;
-
+    public MethodTransformer(Map<String, Set<TargetMethod>> targets) {
+        if(targets == null) throw new NullPointerException("Given target aggregation is null");
+        this.targets = targets;
     }
 
-
-    private void buildTreeMap(List<String> methods) {
-
-        methodPosition = new TreeMap<>();
-        AtomicInteger position = new AtomicInteger();
-
-        methods.forEach( m -> {
-            methodPosition.put(m, position.getAndIncrement());
-        } );
-
-    }
-
-    private Set<String> classes;
-    private TreeMap<String, Integer> methodPosition;
+    private Map<String, Set<TargetMethod>> targets;
 
     public byte[] transform(ClassLoader loader,
                             String className,
@@ -48,21 +29,23 @@ public class MethodTransformer implements ClassFileTransformer {
     {
 
         try {
-            if(className == null) { //Weird but might happen
+            if(className == null ||!targets.containsKey(className)) { //Weird but might happen
                 return classFileBuffer;
             }
 
             ClassPool pool = ClassPool.getDefault();
             CtClass theClass = pool.get(className.replace('/', '.'));
 
-            if(mustSkip(theClass)) {
-                return classFileBuffer;
-            }
-
-            for(CtBehavior behavior: theClass.getDeclaredBehaviors()) {
-                if(mustSkip(behavior)) continue;
-                instrument(behavior);
-                behaviorInstrumented.invokeWith(behavior);
+            for(TargetMethod targetMethod : targets.get(className)) {
+                CtBehavior behavior;
+                if(targetMethod.getName().equals("<init>"))
+                    behavior = theClass.getConstructor(targetMethod.getDesc());
+                else if(targetMethod.getName().equals("<clinit>"))
+                    behavior = theClass.getClassInitializer();
+                else
+                    behavior = theClass.getMethod(targetMethod.getName(), targetMethod.getDesc());
+                if (!mustSkip(behavior))
+                    instrument(behavior, theClass, targetMethod.line);
             }
 
             byte[] outputBuffer = theClass.toBytecode();
@@ -91,11 +74,18 @@ public class MethodTransformer implements ClassFileTransformer {
 
     }
 
-    private void instrument(CtBehavior behavior) {
+    private void instrument(CtBehavior behavior, CtClass inClass, int id) {
         try {
-            int givenID = methodPosition.get(behavior.getLongName());
-            behavior.insertBefore(getEnterProbe(givenID));
-            behavior.insertAfter(getExitProbe(givenID), true);
+            if(behavior.getMethodInfo().isMethod() && !inClass.equals(behavior.getDeclaringClass())) {
+                CtMethod method = (CtMethod) behavior;
+                behavior = CtNewMethod.delegator(method, inClass);
+                inClass.addMethod((CtMethod)behavior);
+            }
+
+            behavior.insertBefore(getEnterProbe(id));
+            behavior.insertAfter(getExitProbe(id), true);
+
+            behaviorInstrumented.invokeWith(behavior);
         }
         catch (CannotCompileException exc) {
             throw new AssertionError("An error was found while compiling the probes: " + exc.getMessage(), exc);
@@ -103,18 +93,10 @@ public class MethodTransformer implements ClassFileTransformer {
     }
 
     private boolean mustSkip(CtBehavior behavior) {
-        return isNotATarget(behavior) || !methodPosition.containsKey(behavior.getLongName());
-    }
-
-    private boolean isNotATarget(CtBehavior  method) {
-        int modifiers = method.getModifiers();
+        int modifiers = behavior.getModifiers();
         int check = Modifier.ABSTRACT | Modifier.NATIVE | AccessFlag.SYNTHETIC;
         return (modifiers & check) != 0;
     }
-
-    private boolean mustSkip(CtClass aClass) { return isOurs(aClass) || !classes.contains(aClass.getName()); }
-
-    private boolean isOurs(CtClass aClass) { return aClass.getPackageName().equals("fr.inria.stamp.dissector"); }
 
     public final Event<Throwable> transformationError = new Event<>();
 

@@ -4,10 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -19,32 +16,40 @@ public class MethodListParser {
 
     static {
         //Build the pattern
-
-        String identifier = "[0-9a-zA-Z_\\$]+";
-        String qualifiedName = String.format("%1$s(\\.%1$s)*", identifier);
-        String type = qualifiedName + "(\\[\\])*";
-        String parameters = String.format("\\((%1$s(,%1$s)*)?\\)", type);
-        String comments = "\\s*:.*";
-        String signature = String.format("^(?<method>(?<class>%s)\\.%s%s)(%s)?$", qualifiedName, identifier, parameters, comments);
-
+        String identifier = "[^\\.;\\[/\\(\\):]+";
+        String qualifiedName = String.format("%1$s(/%1$s)*", identifier);
+        String signature = String.format("(?<class>%s)/(?<method>%s)(?<desc>\\(.*\\).+)", qualifiedName, identifier);
         SIGNATURE = Pattern.compile(signature);
+
+        //SIGNATURE = Pattern.compile("(?<class>.+)/(?<method>.+)(?<desc>\\(\\)V)");
     }
 
-    private List<String> methods = new LinkedList<>();
-    private Set<String> classes = new HashSet<>();
+    private Map<String, Set<TargetMethod>> targets = new HashMap<>();
     private LinkedList<Integer> errors = new LinkedList<>();
 
 
     public boolean parse(Stream<String> input) {
-        reset();
 
-        final AtomicInteger position = new AtomicInteger(1);
+        final AtomicInteger position = new AtomicInteger();
         input.forEach((str) -> {
 
             Matcher matcher = SIGNATURE.matcher(str);
             if(matcher.matches()) {
-                methods.add(matcher.group("method"));
-                classes.add(matcher.group("class"));
+
+                String className = matcher.group("class");
+
+                //Don't set our classes as targets
+                if(className.startsWith("fr/inria/stamp/dissector")) return;
+
+                Set<TargetMethod> container = targets.get(className);
+
+                if(container == null) {
+                    container = new HashSet<>();
+                    targets.put(className, container);
+                }
+
+                TargetMethod method = new TargetMethod(className, matcher.group("method"), matcher.group("desc"), position.get());
+                container.add(method);
             }
             else {
                 errors.add(position.get());
@@ -66,22 +71,8 @@ public class MethodListParser {
         return errors.size() > 0;
     }
 
-    protected void reset() {
-        methods.clear();
-        classes.clear();
-        errors.clear();
-    }
-
-    public List<String> getMethods() {
-        return methods;
-    }
-
-    public Set<String> getClasses() {
-        return classes;
-    }
-
-    public boolean hasTargets() {
-        return methods.size() > 0 || classes.size() > 0;
+    public Map<String, Set<TargetMethod>> getTargets() {
+        return targets;
     }
 
     public List<Integer> getLinesWithError() {

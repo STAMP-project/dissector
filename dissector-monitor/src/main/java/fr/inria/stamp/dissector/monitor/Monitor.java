@@ -5,7 +5,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import javassist.bytecode.Descriptor;
+import javassist.ClassPool;
+import javassist.NotFoundException;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -14,7 +15,8 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 
 import java.io.*;
-import java.nio.file.Path;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -102,9 +104,9 @@ public class Monitor extends AbstractMojo {
         Process testProcess = null;
         try {
 
-            getLog().info("Loading mutation file");
+            getLog().info("Gathering target methods");
 
-            MethodSet methods = methodsFromMutationFile(_mutationFile);
+            MethodSet methods = getTargets();
 
             getLog().info("Saving method list");
             methods.save(_methodList);
@@ -138,6 +140,9 @@ public class Monitor extends AbstractMojo {
 
             saveReport(report);
 
+        }
+        catch(NotFoundException exc) {
+            throw new MojoExecutionException("Test classes could not be inspected. Details: " + exc.getMessage());
         }
         catch (IOException exc) {
             throw new MojoExecutionException("Could not start test process. Details: " +  exc.getMessage());
@@ -192,8 +197,6 @@ public class Monitor extends AbstractMojo {
                 Matcher match = logPattern.matcher(line);
                 if(!match.matches()) continue;
 
-
-
                 String action = match.group("type");
                 int thread = Integer.parseInt(match.group("thread"));
                 int method = Integer.parseInt(match.group("method"));
@@ -212,7 +215,6 @@ public class Monitor extends AbstractMojo {
         }
     }
 
-
     private void saveReport(List<MethodEntry> report)  throws IOException {
         Gson gson = new Gson();
         try(FileWriter writer = new FileWriter(_output)) {
@@ -220,54 +222,80 @@ public class Monitor extends AbstractMojo {
         }
     }
 
-
-
-    private MethodSet methodsFromMutationFile(File mutationFile) throws IOException {
+    private Set<String> getMethodsFromMutationFile() throws IOException {
         Set<String> classificationsOfInterest = new HashSet<>(); //TODO: Allow to configure this
         classificationsOfInterest.add("pseudo-tested");
         classificationsOfInterest.add("partially-tested");
-        return methodsFromMutationFile(mutationFile, classificationsOfInterest);
+        return getMethodsFromMutationFile(classificationsOfInterest);
     }
 
+    private MethodSet getTargets() throws IOException, NotFoundException{
 
-    private MethodSet methodsFromMutationFile(File mutationFile, Set<String> classificationsOfInterest) throws IOException {
+        Set<String> targets = getMethodsFromMutationFile();
+        Set<String> testMethods = getTestMethods();
+        targets.addAll(testMethods);
 
+        return new MethodSet(new ArrayList<>(targets), testMethods);
+    }
+
+    private Set<String> getMethodsFromMutationFile(Set<String> classificationsOfInterest) throws IOException {
         JsonParser parser = new JsonParser();
-        JsonObject root = parser.parse(new FileReader(mutationFile)).getAsJsonObject();
+        JsonObject root = parser.parse(new FileReader(_mutationFile)).getAsJsonObject();
 
         Set<String> methods = new HashSet<>();
-        Set<String> tests = new HashSet<>();
-
-        //Valid test name
-        Pattern testNamePattern = Pattern.compile("^(?<method>[^\\[\\]]+)(\\[.*\\])?\\(.*\\)$", Pattern.DOTALL);
 
         for (JsonElement element : root.getAsJsonArray("methods")) {
             JsonObject methodObj = element.getAsJsonObject();
 
-            if(!classificationsOfInterest.contains(methodObj.get("classification").getAsString())) continue;
+            if (!classificationsOfInterest.contains(methodObj.get("classification").getAsString())) continue;
 
-            String packageName = methodObj.get("package").getAsString().replace("/", ".");
+            String packageName = methodObj.get("package").getAsString();
             String className = methodObj.get("class").getAsString();
-            String methoName = methodObj.get("name").getAsString();
-            String signature = Descriptor.toString(methodObj.get("description").getAsString());
-            methods.add(String.format("%s.%s.%s%s", packageName, className, methoName, signature));
+            String methodName = methodObj.get("name").getAsString();
+            String desc = methodObj.get("description").getAsString();
 
-            for(JsonElement testNameElement : methodObj.getAsJsonArray("tests")) {
 
-                String testName = testNameElement.getAsString();
-                Matcher match = testNamePattern.matcher(testName);
-                if(!match.matches()) {
-                    getLog().warn("Ignoring wrong test name: " + testName);
-                    continue;
-                }
-                String finalTestName = match.group("method") + "()";
-                methods.add(finalTestName);
-                tests.add(finalTestName);
-            }
-
+            methods.add(String.format("%s/%s/%s%s", packageName, className, methodName, desc));
         }
 
-        return new MethodSet(new ArrayList<>(methods), tests);
+        return methods;
+    }
+
+    private Set<String> getTestMethods() throws IOException, NotFoundException {
+
+        String rootFolder = _project.getBuild().getTestOutputDirectory();
+        ClassPool pool = ClassPool.getDefault();
+        pool.appendClassPath(rootFolder);
+        TestMethodCollector collector = new TestMethodCollector(pool);
+
+        Files.walkFileTree(Paths.get(rootFolder), new FileVisitor<Path>() {
+
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+            {
+                String filePath = file.toString();
+                String extension = ".class";
+                if(!filePath.endsWith(extension)) return FileVisitResult.CONTINUE; //Using this instead of Path's capabilities due to an odd behavior in Path endsWith
+                String className = filePath.substring(rootFolder.length() + 1, filePath.length() - extension.length()).replace('/', '.');
+                collector.collectFrom(className);
+                return FileVisitResult.CONTINUE;
+            }
+
+            public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                return FileVisitResult.CONTINUE;
+            }
+
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)  {
+                return FileVisitResult.CONTINUE;
+            }
+
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc)  {
+                return FileVisitResult.CONTINUE;
+            }
+
+        });
+
+        return collector.getCollectecMethods();
+
     }
 
 }

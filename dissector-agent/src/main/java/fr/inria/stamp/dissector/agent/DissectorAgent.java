@@ -33,12 +33,18 @@ public class DissectorAgent {
         try {
             logger.logWithTime("Started");
             MethodListParser input = MethodListParser.getParser(args.getInputPath());
+
+            logger.logWithTime("Input parsed");
+
             if (input.hasErrors()) {
                 String message = "Wrong format in lines: " + input.getLinesWithError().stream().map(i -> i.toString()).collect(Collectors.joining(","));
                 logger.log("input error", message);
                 System.exit(INPUT_ERROR);
             }
-            MethodTransformer transformer = new MethodTransformer(input.getMethods(), input.getClasses());
+
+            logger.logWithTime("Creating transformer");
+
+            MethodTransformer transformer = new MethodTransformer(input.getTargets());
 
             transformer.behaviorInstrumented.register( beh -> logger.log("instrumented", beh.getLongName()));
             transformer.transformationError.register( exc -> logger.log("instrumentation error", exc.getMessage()));
@@ -50,6 +56,8 @@ public class DissectorAgent {
             logger.log("error", exc.getMessage());
             System.exit(UNEXPECTED_ERROR);
         }
+
+        logger.logWithTime("Finished");
 
     }
 
