@@ -5,11 +5,8 @@ import javassist.bytecode.AccessFlag;
 
 import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class MethodTransformer implements ClassFileTransformer {

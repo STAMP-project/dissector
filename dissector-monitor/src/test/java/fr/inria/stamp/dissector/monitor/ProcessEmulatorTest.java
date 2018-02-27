@@ -1,7 +1,6 @@
 package fr.inria.stamp.dissector.monitor;
 
 
-import com.google.gson.Gson;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -9,11 +8,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.both;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsCollectionContaining.hasItem;
-import static org.hamcrest.core.IsCollectionContaining.hasItems;
 import static org.junit.Assert.*;
 
 public class ProcessEmulatorTest {

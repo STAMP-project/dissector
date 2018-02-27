@@ -1,13 +1,12 @@
 package fr.inria.stamp.dissector.monitor;
 
-import com.google.gson.*;
-
-import java.io.*;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javassist.bytecode.Descriptor;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 
 public class MethodSet {
