@@ -32,17 +32,20 @@ public class DebugTraceMonitor extends ExecutorMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
 
-        try(Stream<String> feed = Files.lines(_traceFile.toPath())) {
+        try (Stream<String> feed = Files.lines(_traceFile.toPath())) {
             executeAndSave(feed);
-        }
-        catch (IOException exc) {
+        } catch (IOException exc) {
             throw new MojoExecutionException("An error occurred while reading the list of methods.", exc);
 
         }
     }
 
     @Override
-    protected List<String> getTargetMethods() throws MojoExecutionException {
+    protected MethodSet getMethodSet() throws MojoExecutionException {
+        return new MethodSet(getTargetMethods(), getTestMethods());
+    }
+
+    private List<String> getTargetMethods() throws MojoExecutionException {
         try {
             ArrayList<String> result = new ArrayList<>();
             try (FileReader reader = new FileReader(_methodList)) {
@@ -52,8 +55,7 @@ public class DebugTraceMonitor extends ExecutorMojo {
                     result.add(line);
             }
             return result;
-        }
-        catch (IOException exc) {
+        } catch (IOException exc) {
             throw new MojoExecutionException("An error occurred while reading the list of methods.", exc);
         }
     }

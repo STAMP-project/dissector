@@ -37,17 +37,7 @@ public abstract class ExecutorMojo extends DissectorMojo {
         _output = output;
     }
 
-
-    protected Set<String> getTestMethodNames() throws MojoExecutionException {
-        return getTestMethods().stream().map(t -> t.name).collect(Collectors.toSet());
-    }
-
-    protected MethodSet getMethodSet() throws MojoExecutionException {
-        return new MethodSet(getTargetMethods(), getTestMethodNames());
-    }
-
-    protected abstract List<String> getTargetMethods() throws MojoExecutionException;
-
+    protected abstract MethodSet getMethodSet() throws MojoExecutionException;
 
     protected List<MethodEntry> executeProcess(final Stream<String> feed, final ProcessEmulator emulator) throws MojoFailureException {
         final Pattern logPattern = Pattern.compile("\\[\\[D\\]\\[(?<type>.):(?<method>\\d+):(?<thread>\\d+):(?<depth>\\d+)\\]\\]");
@@ -69,12 +59,13 @@ public abstract class ExecutorMojo extends DissectorMojo {
             else if (action.equals("<"))
                 emulator.exit(thread, method, depth);
         });
-        if (emulator.isCorrupt())
+        if (emulator.isCorrupt()) {
+            getLog().error("Emulation produced a corrupt state");
             throw new MojoFailureException("Emulation process was corrupt");
+        }
 
         return emulator.getReport();
     }
-
 
     protected void saveReport(List<MethodEntry> report)  throws MojoExecutionException {
         try {
@@ -99,6 +90,5 @@ public abstract class ExecutorMojo extends DissectorMojo {
     protected void executeAndSave(Stream<String> feed) throws MojoExecutionException, MojoFailureException {
         executeAndSave(feed, new ProcessEmulator(getMethodSet()));
     }
-
 
 }

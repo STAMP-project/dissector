@@ -25,14 +25,15 @@ public class TestCounterMojo extends DissectorMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         try {
-            Set<TestInfo> tests = getTestMethods();
+            Set<String> tests = getTestMethods();
+            getLog().info(tests.size() + " test methods were collected.");
             Gson gson = new Gson();
             try(FileWriter writer = new FileWriter(_output)) {
                 gson.toJson(tests, writer);
             }
         }
         catch (Throwable exc) {
-            throw new MojoFailureException(exc.getMessage());
+            throw new MojoFailureException(exc.getMessage(), exc);
         }
     }
 

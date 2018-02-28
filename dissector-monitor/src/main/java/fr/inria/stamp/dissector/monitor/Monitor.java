@@ -153,18 +153,26 @@ public class Monitor extends ExecutorMojo {
     }
 
     @Override
-    protected List<String> getTargetMethods() throws MojoExecutionException {
+    protected MethodSet getMethodSet() throws MojoExecutionException {
+        Set<String> targets = getMethodsFromMutationFile();
+        Set<String> tests = getTestMethods();
+        targets.addAll(tests);
+        getLog().debug("Target methods: " + targets.size());
+        getLog().debug("Test methods: " + tests.size());
+        return new MethodSet(new ArrayList<>(targets), tests);
+    }
+
+    private Set<String> getMethodsFromMutationFile() throws MojoExecutionException {
         try {
             Set<String> classificationsOfInterest = new HashSet<>(); //TODO: Allow to configure this
             classificationsOfInterest.add("pseudo-tested");
             classificationsOfInterest.add("partially-tested");
-            return new ArrayList<>(getMethodsFromMutationFile(classificationsOfInterest));
+            return getMethodsFromMutationFile(classificationsOfInterest);
         }
         catch (IOException exc){
             throw new MojoExecutionException("An error occurred while reading the list of methods from the mutation report.", exc);
         }
     }
-
 
     private Set<String> getMethodsFromMutationFile(Set<String> classificationsOfInterest) throws IOException {
         JsonParser parser = new JsonParser();
