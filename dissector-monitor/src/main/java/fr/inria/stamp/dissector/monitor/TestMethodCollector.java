@@ -15,7 +15,7 @@ public class TestMethodCollector {
 
     public TestMethodCollector(ClassPool pool) throws NotFoundException {
         this.pool = pool;
-        testCaseClass = pool.get("junit.framework.TestCase");
+        testCaseClass = pool.getOrNull("junit.framework.TestCase");
         tests = new HashSet<>();
     }
 
