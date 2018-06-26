@@ -9,7 +9,7 @@
     <packaging>jar</packaging>
 
     <parent>
-        <groupId>fr.inria.stamp</groupId>
+        <groupId>eu.stamp-project</groupId>
         <artifactId>dissector</artifactId>
         <version>1.0-SNAPSHOT</version>
         <relativePath>../</relativePath>
@@ -34,8 +34,8 @@
                 <configuration>
                     <archive>
                         <manifestEntries>
-                            <Premain-Class>fr.inria.stamp.dissector.agent.DissectorAgent</Premain-Class>
-                            <Agent-Class>fr.inria.stamp.dissector.agent.DissectorAgent</Agent-Class>
+                            <Premain-Class>eu.stamp_project.dissector.agent.DissectorAgent</Premain-Class>
+                            <Agent-Class>eu.stamp_project.dissector.agent.DissectorAgent</Agent-Class>
                             <Can-Redefine-Classes>true</Can-Redefine-Classes>
                             <Can-Retransform-Classes>true</Can-Retransform-Classes>
                         </manifestEntries>
@@ -57,8 +57,8 @@
                         </manifest>
                         <manifestEntries>
                             <!-- TODO: Try to remove configuration duplication -->
-                            <Premain-Class>fr.inria.stamp.dissector.agent.DissectorAgent</Premain-Class>
-                            <Agent-Class>fr.inria.stamp.dissector.agent.DissectorAgent</Agent-Class>
+                            <Premain-Class>eu.stamp_project.dissector.agent.DissectorAgent</Premain-Class>
+                            <Agent-Class>eu.stamp_project.dissector.agent.DissectorAgent</Agent-Class>
                             <Can-Redefine-Classes>true</Can-Redefine-Classes>
                             <Can-Retransform-Classes>true</Can-Retransform-Classes>
                         </manifestEntries>
