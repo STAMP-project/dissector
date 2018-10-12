@@ -11,7 +11,7 @@ import java.io.FileWriter;
 import java.util.Set;
 
 @Mojo(name = "count-tests")
-public class TestCounterMojo extends DissectorMojo {
+public class TestCounterMojoBase extends BaseDissectorMojo {
 
     @Parameter(property = "output", defaultValue = "${project.build.directory}/tests.json")
     private File _output;

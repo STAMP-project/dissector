@@ -20,11 +20,11 @@ import java.util.stream.Collectors;
 //TODO: Inspect the project to gather methods
 
 @Mojo(name = "execute")
-public class Monitor extends ExecutorMojo {
+public class Monitor extends ExecutorMojoBase {
 
     //TODO: If no mutation file is given, extract the information from the project
 
-    @Parameter(property = "mutationFile", defaultValue = "${project.build.directory}/mutations.json")
+    @Parameter(property = "mutationFile", defaultValue = "${project.build.directory}/methods.json")
     private File _mutationFile;
 
     public File getMutationFile() {
@@ -37,7 +37,8 @@ public class Monitor extends ExecutorMojo {
 
     //TODO: Find the jar with all dependencies
     //TODO: There was something with ${maven.dependency.fr.inria.stamp....} that didn't work
-    @Parameter(property = "agentJar", defaultValue = "${settings.localRepository}/fr/inria/stamp/dissector-agent/1.0-SNAPSHOT/dissector-agent-1.0-SNAPSHOT-jar-with-dependencies.jar")
+//    @Parameter(property = "agentJar", defaultValue = "${settings.localRepository}/fr/inria/stamp/dissector-agent/1.0-SNAPSHOT/dissector-agent-1.0-SNAPSHOT-jar-with-dependencies.jar")
+    @Parameter(property = "agentJar", defaultValue = "${project.dependency.org.javassist.javassist.jar.path}")
     private String _agentJar;
 
     public String getAgentJar() {
@@ -47,6 +48,13 @@ public class Monitor extends ExecutorMojo {
     public void setAgentJar(String agentJar) {
         _agentJar = agentJar;
     }
+
+//    @Parameter(defaultValue = "${settings.localRepository}")
+//    private MavenArtifactRepository _repository;
+//
+//    public void setRepository(MavenArtifactRepository repository) {
+//        _repository = repository;
+//    }
 
     @Parameter(property = "readFromStandardOutput", defaultValue = "false")
     private boolean _readFromStandardOutput = false;
@@ -155,7 +163,7 @@ public class Monitor extends ExecutorMojo {
     @Override
     protected MethodSet getMethodSet() throws MojoExecutionException {
         Set<String> targets = getMethodsFromMutationFile();
-        Set<String> tests = getTestMethods();
+        Set<String> tests;// = getTestMethods();
         targets.addAll(tests);
         getLog().debug("Target methods: " + targets.size());
         getLog().debug("Test methods: " + tests.size());

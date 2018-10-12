@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 
 
 @Mojo(name = "from-trace")
-public class DebugTraceMonitor extends ExecutorMojo {
+public class DebugTraceMonitor extends ExecutorMojoBase {
 
     @Parameter(property = "traceFile", defaultValue = "${project.build.directory}/method.trace.txt")
     private File _traceFile;

@@ -30,6 +30,7 @@ public class MethodTransformer implements ClassFileTransformer {
                 return classFileBuffer;
             }
 
+
             ClassPool pool = ClassPool.getDefault();
             CtClass theClass = pool.get(className.replace('/', '.'));
 
@@ -58,7 +59,7 @@ public class MethodTransformer implements ClassFileTransformer {
     }
 
     private String getInstruction(String annotation, int id) {
-        return String.format("{System.err.print(\"\\n[[D][%s:%d:\" + Thread.currentThread().getId() + \":\" + Thread.currentThread().getStackTrace().length + \"]]\\n\");}",
+        return String.format("{eu.stamp_project.instrumentation.CallTracer.send(\"\\n[[D][%s:%d:\" + Thread.currentThread().getId() + \":\" + Thread.currentThread().getStackTrace().length + \"]]\\n\");}",
                 annotation, id);
     }
 

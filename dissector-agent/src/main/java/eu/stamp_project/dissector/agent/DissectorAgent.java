@@ -1,7 +1,20 @@
 package eu.stamp_project.dissector.agent;
 
+import javassist.CannotCompileException;
+import javassist.ClassPool;
+import javassist.CtClass;
+import javassist.CtMethod;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.instrument.Instrumentation;
+import java.util.Map;
+import java.util.Set;
+import java.util.jar.JarFile;
+import java.util.jar.JarOutputStream;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
 
 
 public class DissectorAgent {
@@ -31,6 +44,7 @@ public class DissectorAgent {
         }
 
         try {
+
             logger.logWithTime("Started");
             MethodListParser input = MethodListParser.getParser(args.getInputPath());
 
@@ -51,6 +65,9 @@ public class DissectorAgent {
 
             inst.addTransformer(transformer);
 
+            logger.logWithTime("Attaching the tracer jar");
+            inst.appendToSystemClassLoaderSearch(generateTracerJar(0));
+
         }
         catch (Throwable exc) {
             logger.log("error", exc.getMessage());
@@ -58,6 +75,50 @@ public class DissectorAgent {
         }
 
         logger.logWithTime("Finished");
+
+    }
+
+    public static JarFile generateTracerJar(int port) throws IOException {
+        return generateJarFile(generateTracerClass(port));
+    }
+
+    public static CtClass generateTracerClass(int port) {
+        try {
+            ClassPool pool = ClassPool.getDefault();
+            CtClass tracerClass = pool.makeClass("eu.stamp_project.instrumentation.CallTracer");
+            tracerClass.addMethod(CtMethod.make("public void send(java.lang.String message){System.err.println(message);}", tracerClass));
+            return tracerClass;
+        }
+        catch (CannotCompileException exc) { // This should not happen
+            throw new AssertionError("CallTracer instrumentation could not be compiled. Details: " + exc.getReason());
+        }
+
+    }
+
+    public static JarFile generateJarFile(CtClass tracerClass) throws IOException {
+
+        try {
+
+            File tempFile = File.createTempFile("__stamp__", "__intrumentation__");
+            FileOutputStream fileStream = new FileOutputStream(tempFile);
+            JarOutputStream jarStream = new JarOutputStream(fileStream);
+
+            jarStream.putNextEntry(new ZipEntry(tracerClass.getPackageName().replace(".", "/") + "/"));
+            jarStream.putNextEntry(new ZipEntry(tracerClass.getName().replace(".", "/")));
+
+            jarStream.write(tracerClass.toBytecode());
+
+            jarStream.closeEntry();
+            jarStream.close();
+
+            fileStream.close();
+
+            return new JarFile(tempFile);
+        }
+        catch (CannotCompileException exc) { //This should not happen
+            throw new AssertionError("Could not convert CallTracer class to bytecode. Details: " + exc.getReason());
+        }
+
 
     }
 

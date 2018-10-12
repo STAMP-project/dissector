@@ -13,7 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-public abstract class ExecutorMojo extends DissectorMojo {
+public abstract class ExecutorMojoBase extends BaseDissectorMojo {
 
     @Parameter(property = "methodList", defaultValue = "${project.build.directory}/methods.input.txt")
     protected File _methodList;
