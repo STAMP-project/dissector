@@ -273,7 +273,7 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
         try {
             InputStream agentJarFromResources = getClass()
                     .getClassLoader()
-                    .getResourceAsStream("dissector-agent.jar");
+                    .getResourceAsStream("dissector-agent-jar-with-dependencies.jar");
 
             File jarFile = File.createTempFile("__stamp__", "__dissector_agent__");
             FileOutputStream jarFileOutput = new FileOutputStream(jarFile);

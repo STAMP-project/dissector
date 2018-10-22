@@ -1,16 +1,11 @@
 package eu.stamp_project.dissector.agent;
 
-import javassist.CannotCompileException;
-import javassist.ClassPool;
-import javassist.CtClass;
-import javassist.CtMethod;
+import javassist.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.instrument.Instrumentation;
-import java.util.Map;
-import java.util.Set;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.stream.Collectors;
@@ -66,7 +61,10 @@ public class DissectorAgent {
             inst.addTransformer(transformer);
 
             logger.logWithTime("Attaching the tracer jar");
-            inst.appendToSystemClassLoaderSearch(generateTracerJar(0));
+            JarFile jar = generateTracerJar(0);
+
+            logger.log("Probe sender JAR generated at " + jar.getName());
+            inst.appendToSystemClassLoaderSearch(jar);
 
         }
         catch (Throwable exc) {
@@ -84,9 +82,11 @@ public class DissectorAgent {
 
     public static CtClass generateTracerClass(int port) {
         try {
+
             ClassPool pool = ClassPool.getDefault();
             CtClass tracerClass = pool.makeClass("eu.stamp_project.instrumentation.CallTracer");
-            tracerClass.addMethod(CtMethod.make("public void send(java.lang.String message){System.err.println(message);}", tracerClass));
+            CtMethod sendMethod = CtMethod.make("public static void send(java.lang.String message){System.err.println(message);}", tracerClass);
+            tracerClass.addMethod(sendMethod);
             return tracerClass;
         }
         catch (CannotCompileException exc) { // This should not happen
@@ -104,7 +104,7 @@ public class DissectorAgent {
             JarOutputStream jarStream = new JarOutputStream(fileStream);
 
             jarStream.putNextEntry(new ZipEntry(tracerClass.getPackageName().replace(".", "/") + "/"));
-            jarStream.putNextEntry(new ZipEntry(tracerClass.getName().replace(".", "/")));
+            jarStream.putNextEntry(new ZipEntry(tracerClass.getName().replace(".", "/") + ".class"));
 
             jarStream.write(tracerClass.toBytecode());
 

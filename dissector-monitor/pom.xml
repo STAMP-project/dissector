@@ -95,7 +95,7 @@
                                 <resource>
                                     <directory>../dissector-agent/target/</directory>
                                     <includes>
-                                        <include>dissector-agent.jar</include>
+                                        <include>dissector-agent-jar-with-dependencies.jar</include>
                                     </includes>
                                 </resource>
                             </resources>
