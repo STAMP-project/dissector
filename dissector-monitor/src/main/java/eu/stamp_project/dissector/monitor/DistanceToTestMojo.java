@@ -49,26 +49,23 @@ public class DistanceToTestMojo extends DynamicDissectorMojo implements TestMeth
     }
 
     @Override
-    protected void onMethodExit(int thread, int method, int depth) throws MojoExecutionException {
-        emulator.enter(thread, method, depth);
-        if(emulator.isCorrupt()) {
-            getLog().error("Emulation produced a corrupt state");
-            throw new MojoExecutionException("Corrupt emulation state");
+    protected void onMethodExit(int thread, int method, int depth) {
+        if(!emulator.isCorrupt()) {
+            emulator.exit(thread, method, depth);
         }
-
     }
 
     @Override
-    protected void onMethodEnter(int thread, int method, int depth) throws MojoExecutionException {
-        emulator.exit(thread, method, depth);
-        if (emulator.isCorrupt()) {
-            getLog().error("Emulation produced a corrupt state");
-            throw new MojoExecutionException("Emulation process was corrupt");
+    protected void onMethodEnter(int thread, int method, int depth) {
+        if (!emulator.isCorrupt()) {
+            emulator.enter(thread, method, depth);
         }
     }
 
     @Override
     protected void finishExecution() throws MojoExecutionException {
+        if (emulator.isCorrupt())
+            throw new MojoExecutionException("Emulation produced a corrupt state");
         List<MethodEntry>  report = emulator.getReport();
         if(report.isEmpty())
             getLog().warn("Emulation report was empty");
@@ -83,7 +80,7 @@ public class DistanceToTestMojo extends DynamicDissectorMojo implements TestMeth
             }
         }
         catch (IOException exc) {
-            throw new MojoExecutionException("An error occurred whjle saving the report. Details: " + exc.getMessage(), exc);
+            throw new MojoExecutionException("An error occurred while saving the report. Details: " + exc.getMessage(), exc);
         }
     }
 }

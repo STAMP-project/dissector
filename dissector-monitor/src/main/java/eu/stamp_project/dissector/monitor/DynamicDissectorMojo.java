@@ -191,7 +191,7 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
         Process testProcess = null;
         try {
             List<String> command = getTestCommand();
-            getLog().debug("Executing: " + command.stream().collect(joining("")));
+            getLog().debug("Executing: " + command.stream().collect(joining(" ")));
 
             ProcessBuilder processBuilder = new ProcessBuilder(command);
             processBuilder.redirectError(ProcessBuilder.Redirect.PIPE);
@@ -217,11 +217,7 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
 
         final Pattern logPattern = Pattern.compile("\\[\\[D\\]\\[(?<type>.):(?<method>\\d+):(?<thread>\\d+):(?<depth>\\d+)\\]\\]");
 
-        Iterator<String> lines = incomming.iterator();
-
-        while(lines.hasNext()) {
-            String line = lines.next();
-
+        incomming.forEach(line -> {
             getLog().debug(line);
 
             Matcher match = logPattern.matcher(line);
@@ -235,13 +231,14 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
             switch (action) { //In this case, the switch-case is more readable than an if
                 case ">":
                     onMethodEnter(thread, method, depth);
+                    break;
                 case "<":
                     onMethodExit(thread, method, depth);
+                    break;
                 default:
                     getLog().warn("Unknown action: " + action);
             }
-
-        }
+        });
     }
 
 
@@ -297,12 +294,11 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
         }
     }
 
-
     protected abstract void prepareExecution() throws MojoExecutionException;
 
-    protected abstract void onMethodExit(int thread, int method, int depth) throws MojoExecutionException;
+    protected abstract void onMethodExit(int thread, int method, int depth);
 
-    protected abstract void onMethodEnter(int thread, int method, int depth) throws MojoExecutionException;
+    protected abstract void onMethodEnter(int thread, int method, int depth);
 
     protected abstract void finishExecution() throws MojoExecutionException;
 }
