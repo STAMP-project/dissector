@@ -11,6 +11,10 @@ import java.util.Set;
 
 public class MethodSet {
 
+    public MethodSet(List<String> methods) {
+        this(methods, Collections.EMPTY_SET);
+    }
+
     public MethodSet(List<String> methods, Set<String> tests) {
         this.methods = methods;
         this.tests = new boolean[methods.size()];

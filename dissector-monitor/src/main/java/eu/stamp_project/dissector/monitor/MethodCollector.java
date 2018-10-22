@@ -9,7 +9,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashSet;
 import java.util.Set;
 
-public class PublicMethodCollector {
+public class MethodCollector {
 
     private ClassPool pool;
     private String root;
@@ -17,7 +17,7 @@ public class PublicMethodCollector {
 
     private static final String CLASS_EXT = ".class";
 
-    public PublicMethodCollector(String root) throws IllegalArgumentException {
+    public MethodCollector(String root) throws IllegalArgumentException {
         collectedMethods = new HashSet<>();
         pool = ClassPool.getDefault();
         this.root = root;
@@ -80,15 +80,11 @@ public class PublicMethodCollector {
         for (CtBehavior behavior : theClass.getDeclaredBehaviors()) {
 
             MethodInfo info = behavior.getMethodInfo();
-            if(!Modifier.isPublic(behavior.getModifiers()) || (info.isConstructor() && behavior.isEmpty()))
+            if(info.isConstructor() && behavior.isEmpty())
                 continue; // Not counting private methods or default constructors
 
             collectedMethods.add(theClass.getName().replace('.', '/') + "/" + info.getName() + info.getDescriptor());
         }
-    }
-
-    protected Set<String> collectFromClass(String className) {
-        return null;
     }
 
 }

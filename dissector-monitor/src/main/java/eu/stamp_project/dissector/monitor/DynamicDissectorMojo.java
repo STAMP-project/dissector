@@ -1,19 +1,24 @@
 package eu.stamp_project.dissector.monitor;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.joining;
 
-public abstract class AgentExecutionMojo extends BaseDissectorMojo{
+public abstract class DynamicDissectorMojo extends DissectorMojo {
 
     /**
      * File with the list of methods to pass to the agent
@@ -87,17 +92,99 @@ public abstract class AgentExecutionMojo extends BaseDissectorMojo{
         _injectTestArgs = injectTestArgs;
     }
 
+    /**
+     * Path to a JSON file with the methods to involve in the execution
+     */
+
+    @Parameter(property = "methodsOfInterest", defaultValue = "${project.build.directory}/methods.json")
+    protected File _methodsOfInterest;
+
+    public File getMethodsOfInterest() {
+        return _methodsOfInterest;
+    }
+
+    public void setMethodsOfInterest(File methodsOfInterest) {
+        _methodsOfInterest = methodsOfInterest;
+    }
+
+    /**
+     * If given, the methodsOfInterest parameter will be filtered by a classification field
+     */
+    @Parameter(property = "classificationsOfInterest")
+    protected Set<String> _classificationsOfInterest;
+
+    public Set<String> getClassificationsOfInterest() {
+        if(_classificationsOfInterest == null)
+            return Collections.EMPTY_SET;
+        return _classificationsOfInterest;
+    }
+
+    public void setClassificationsOfInterest(Set<String> classificationsOfInterest) {
+        this._classificationsOfInterest = classificationsOfInterest;
+    }
+
+    protected List<String> getTargetMethodsFromFile() throws IOException {
+
+        Gson gson = new Gson();
+
+        FileReader reader = new FileReader(_methodsOfInterest);
+        JsonObject root = gson.fromJson(reader, JsonObject.class);
+        JsonArray arrayOfEntries = (root.isJsonArray())?  root.getAsJsonArray() : root.getAsJsonArray("methods");
+
+        List<String> targetMethods = new LinkedList<>();
+
+        //ARRGGHH Java!
+        // The best way to get from Iterator to Stream
+        // https://stackoverflow.com/questions/24511052/how-to-convert-an-iterator-to-a-stream
+        Stream<JsonElement> elements = StreamSupport.stream(Spliterators.spliteratorUnknownSize(arrayOfEntries.iterator(), Spliterator.ORDERED), false);
+
+        Stream<JsonObject> entries = elements.map(JsonElement::getAsJsonObject);
+
+        if(!_classificationsOfInterest.isEmpty()) {
+
+            entries = entries.filter(entry ->
+                    entry.has("classification") &&
+                            _classificationsOfInterest.contains(entry.get("classification").getAsString()));
+        }
+
+        return entries.map(entry ->
+                String.format("%s/%s/%s%s",
+                        entry.get("package").getAsString(),
+                        entry.get("class").getAsString(),
+                        entry.get("name").getAsString(),
+                        entry.get("description").getAsString()
+                )).collect(Collectors.toList());
+    }
+
+    protected MethodSet targetsForTheAgent;
+
+    protected MethodSet gatherTargetsForTheAgent() throws IOException {
+        return new MethodSet((getTargetMethodsFromFile()));
+    }
+
+    protected void prepareAgentTargets() throws MojoExecutionException {
+        try {
+            targetsForTheAgent = gatherTargetsForTheAgent();
+            targetsForTheAgent.save(_methodList);
+        }
+        catch (IOException exc) {
+            throw new MojoExecutionException("Failed to save the list of methods", exc);
+        }
+    }
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        getLog().info("Obtaning the list of methods for the agent");
+        prepareAgentTargets();
+
         getLog().info("Preparing agent execution");
         prepareExecution();
-
-        getLog().info("Saving the list of methods to target");
-        saveMethodList();
 
         getLog().info("Executing the tests");
         executeTestCommand();
 
+        getLog().info("Finishing execution");
+        finishExecution();
     }
 
     protected  void executeTestCommand() throws MojoExecutionException {
@@ -126,12 +213,15 @@ public abstract class AgentExecutionMojo extends BaseDissectorMojo{
 
     }
 
-    private void monitorProcess(Stream<String> lines) {
+    private void monitorProcess(Stream<String> incomming) throws MojoExecutionException {
 
         final Pattern logPattern = Pattern.compile("\\[\\[D\\]\\[(?<type>.):(?<method>\\d+):(?<thread>\\d+):(?<depth>\\d+)\\]\\]");
-        //final ProcessEmulator emulator = new ProcessEmulator((getMethodSet()));
 
-        lines.forEach((String line) -> {
+        Iterator<String> lines = incomming.iterator();
+
+        while(lines.hasNext()) {
+            String line = lines.next();
+
             getLog().debug(line);
 
             Matcher match = logPattern.matcher(line);
@@ -142,27 +232,19 @@ public abstract class AgentExecutionMojo extends BaseDissectorMojo{
             int method = Integer.parseInt(match.group("method"));
             int depth = Integer.parseInt(match.group("depth"));
 
-            if (action.equals(">"))
-                onMethodEnter(thread, method, depth);
+            switch (action) { //In this case, the switch-case is more readable than an if
+                case ">":
+                    onMethodEnter(thread, method, depth);
+                case "<":
+                    onMethodExit(thread, method, depth);
+                default:
+                    getLog().warn("Unknown action: " + action);
+            }
 
-            else if (action.equals("<"))
-                onMethodExit(thread, method, depth);
-        });
-    }
-
-    protected abstract void onMethodExit(int thread, int method, int depth);
-
-    protected abstract void onMethodEnter(int thread, int method, int depth);
-
-    protected void saveMethodList() throws MojoExecutionException {
-        MethodSet methods = getTargetMethods();
-        try {
-            methods.save(_methodList);
-        }
-        catch (IOException exc) {
-            throw new MojoExecutionException("Failed to save the list of methods", exc);
         }
     }
+
+
 
     protected List<String> getTestCommand() throws MojoExecutionException {
         List<String> command = new ArrayList<>();
@@ -215,15 +297,12 @@ public abstract class AgentExecutionMojo extends BaseDissectorMojo{
         }
     }
 
-    private boolean hasValue(String parameter) {
-        return parameter != null && !parameter.equals("");
-    }
 
+    protected abstract void prepareExecution() throws MojoExecutionException;
 
-    /**
-     * Actions to be executed by the extending classes to prepare the agent execution.
-     */
-    protected abstract void prepareExecution();
+    protected abstract void onMethodExit(int thread, int method, int depth) throws MojoExecutionException;
 
-    protected abstract MethodSet getTargetMethods();
+    protected abstract void onMethodEnter(int thread, int method, int depth) throws MojoExecutionException;
+
+    protected abstract void finishExecution() throws MojoExecutionException;
 }

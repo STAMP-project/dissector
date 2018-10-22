@@ -11,9 +11,9 @@ import java.io.FileWriter;
 import java.util.Set;
 
 @Mojo(name = "count-tests")
-public class TestCounterMojoBase extends BaseDissectorMojo {
+public class TestMethodCounterMojo extends DissectorMojo implements TestMethodAwareMojo {
 
-    @Parameter(property = "output", defaultValue = "${project.build.directory}/tests.json")
+    @Parameter(property = "output", defaultValue = "${project.build.directory}/test-methods.json")
     private File _output;
 
     public File getOutput() { return  _output; }
