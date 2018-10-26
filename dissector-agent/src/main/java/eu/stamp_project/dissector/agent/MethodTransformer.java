@@ -11,12 +11,14 @@ import java.util.Set;
 
 public class MethodTransformer implements ClassFileTransformer {
 
-    public MethodTransformer(Map<String, Set<TargetMethod>> targets) {
+    public MethodTransformer(Map<String, Set<TargetMethod>> targets, MethodInstrumenter instrumenter) {
         if(targets == null) throw new NullPointerException("Given target aggregation is null");
+        if(instrumenter == null) throw new NullPointerException("Instrumenter can not be null");
         this.targets = targets;
     }
 
     private Map<String, Set<TargetMethod>> targets;
+    private MethodInstrumenter instrumenter;
 
     public byte[] transform(ClassLoader loader,
                             String className,
@@ -26,24 +28,18 @@ public class MethodTransformer implements ClassFileTransformer {
     {
 
         try {
+
             if(className == null ||!targets.containsKey(className)) { //Weird but might happen
                 return classFileBuffer;
             }
-
 
             ClassPool pool = ClassPool.getDefault();
             CtClass theClass = pool.get(className.replace('/', '.'));
 
             for(TargetMethod targetMethod : targets.get(className)) {
-                CtBehavior behavior;
-                if(targetMethod.getName().equals("<init>"))
-                    behavior = theClass.getConstructor(targetMethod.getDesc());
-                else if(targetMethod.getName().equals("<clinit>"))
-                    behavior = theClass.getClassInitializer();
-                else
-                    behavior = theClass.getMethod(targetMethod.getName(), targetMethod.getDesc());
-                if (!mustSkip(behavior))
-                    instrument(behavior, theClass, targetMethod.line);
+                CtBehavior behavior = getBehaviorFromClass(targetMethod, theClass);
+                if (mustSkip(behavior)) continue;
+                instrument(behavior, theClass, targetMethod.line);
             }
 
             byte[] outputBuffer = theClass.toBytecode();
@@ -58,42 +54,38 @@ public class MethodTransformer implements ClassFileTransformer {
         }
     }
 
-    private String getInstruction(String annotation, int id) {
-        return String.format("{eu.stamp_project.instrumentation.CallTracer.send(\"\\n[[D][%s:%d:\" + Thread.currentThread().getId() + \":\" + Thread.currentThread().getStackTrace().length + \"]]\\n\");}",
-                annotation, id);
-    }
+    private CtBehavior getBehaviorFromClass(TargetMethod method, CtClass theClass) throws NotFoundException {
 
-    private String getEnterProbe(int id) {
-        return getInstruction(">", id);
-    }
-
-    private String getExitProbe(int id) {
-        return getInstruction("<", id);
-
-    }
-
-    private void instrument(CtBehavior behavior, CtClass inClass, int id) {
-        try {
-            if(behavior.getMethodInfo().isMethod() && !inClass.equals(behavior.getDeclaringClass())) {
-                CtMethod method = (CtMethod) behavior;
-                behavior = CtNewMethod.delegator(method, inClass);
-                inClass.addMethod((CtMethod)behavior);
-            }
-
-            behavior.insertBefore(getEnterProbe(id));
-            behavior.insertAfter(getExitProbe(id), true);
-
-            behaviorInstrumented.invokeWith(behavior);
+        switch(method.getName()) {
+            case "<init>":
+                return theClass.getConstructor(method.getDesc());
+            case "<clinit>":
+                return theClass.getClassInitializer();
+            default:
+                return theClass.getMethod(method.getName(), method.getDesc());
         }
-        catch (CannotCompileException exc) {
-            throw new AssertionError("An error was found while compiling the probes: " + exc.getMessage(), exc);
-        }
+
     }
 
     private boolean mustSkip(CtBehavior behavior) {
         int modifiers = behavior.getModifiers();
         int check = Modifier.ABSTRACT | Modifier.NATIVE | AccessFlag.SYNTHETIC;
         return (modifiers & check) != 0;
+    }
+
+    private void instrument(CtBehavior behavior, CtClass inClass, int id) {
+        try {
+            if (behavior.getMethodInfo().isMethod() && !inClass.equals(behavior.getDeclaringClass())) {
+                CtMethod method = (CtMethod) behavior;
+                behavior = CtNewMethod.delegator(method, inClass);
+                inClass.addMethod((CtMethod) behavior);
+            }
+            instrumenter.instrument(behavior, inClass, id);
+            behaviorInstrumented.invokeWith(behavior);
+        }
+        catch (CannotCompileException exc) {
+            throw new AssertionError("An error was found while compiling the probes: " + exc.getMessage(), exc);
+        }
     }
 
     public final Event<Throwable> transformationError = new Event<>();

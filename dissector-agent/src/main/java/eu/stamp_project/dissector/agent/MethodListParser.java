@@ -1,6 +1,8 @@
 package eu.stamp_project.dissector.agent;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -59,9 +61,9 @@ public class MethodListParser {
         return !hasErrors();
     }
 
-    public static MethodListParser getParser(String path) throws IOException {
+    public static MethodListParser getParser(File input) throws IOException {
         MethodListParser parser = new MethodListParser();
-        try(BufferedReader reader = Files.newBufferedReader(Paths.get(path))) {
+        try(BufferedReader reader = new BufferedReader(new FileReader(input))) {
             parser.parse(reader.lines());
             return parser;
         }

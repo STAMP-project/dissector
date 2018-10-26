@@ -25,23 +25,24 @@ public class DissectorAgent {
 
     public static void agentmain(String agentArgs, Instrumentation inst) {
 
-        ArgsParser args = new ArgsParser();
-        args.parse(agentArgs);
+        ArgumentsParser parser = new ArgumentsParser();
+        parser.parse(agentArgs);
 
-        if(!args.isLogPathValid()) {
+        if(!parser.canLog()) {
             System.exit(ARGUMENT_ERROR);
         }
-        FileLogger logger = new FileLogger(args.getLogPath());
 
-        if(!args.isInputPathValid()) {
-            logger.log("argument error", args.getError());
+        FileLogger logger = parser.getFileLogger();
+
+        if(parser.hasErrors()) {
+            logger.log("argument error", parser.getError());
             System.exit(ARGUMENT_ERROR);
         }
 
         try {
 
             logger.logWithTime("Started");
-            MethodListParser input = MethodListParser.getParser(args.getInputPath());
+            MethodListParser input = MethodListParser.getParser(parser.getInputFile());
 
             logger.logWithTime("Input parsed");
 
@@ -53,7 +54,7 @@ public class DissectorAgent {
 
             logger.logWithTime("Creating transformer");
 
-            MethodTransformer transformer = new MethodTransformer(input.getTargets());
+            MethodTransformer transformer = new MethodTransformer(input.getTargets(), parser.getInstrumenter());
 
             transformer.behaviorInstrumented.register( beh -> logger.log("instrumented", beh.getLongName()));
             transformer.transformationError.register( exc -> logger.log("instrumentation error", exc.getMessage()));
@@ -85,7 +86,7 @@ public class DissectorAgent {
 
             ClassPool pool = ClassPool.getDefault();
             CtClass tracerClass = pool.makeClass("eu.stamp_project.instrumentation.CallTracer");
-            CtMethod sendMethod = CtMethod.make("public static void send(java.lang.String message){System.err.println(message);}", tracerClass);
+            CtMethod sendMethod = CtMethod.make("public static void send(java.lang.String message){System.err.println(\"\\n[[D][\" + message + \"]]\");}", tracerClass);
             tracerClass.addMethod(sendMethod);
             return tracerClass;
         }

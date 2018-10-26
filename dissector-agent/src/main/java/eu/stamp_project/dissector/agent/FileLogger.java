@@ -1,7 +1,6 @@
 package eu.stamp_project.dissector.agent;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -13,17 +12,16 @@ public class FileLogger {
     private BufferedWriter writer;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSSZ");
 
-    public FileLogger(Path path) {
+    public FileLogger(File file) {
         try {
-            writer = Files.newBufferedWriter(path);
+
+            BufferedWriter writer = new BufferedWriter(new FileWriter(file));
         }
         catch(IOException exc) {
             //Silence as we can't log an error in the logger.
             writer = null;
         }
     }
-
-    public FileLogger(String path) { this(Paths.get(path)); }
 
     public void log(String line) {
         if(writer == null) return; //Nothing to say
