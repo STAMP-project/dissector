@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Set;
 
 @Mojo(name = "distance-to-test")
-public class DistanceToTestMojo extends DynamicDissectorMojo implements TestMethodAwareMojo {
+public class DistanceToTestMojo extends InvocationMonitorMojo implements TestMethodAwareMojo {
 
     @Parameter(property = "output", defaultValue = "${project.build.directory}/stack-distance.json")
     protected File _output;

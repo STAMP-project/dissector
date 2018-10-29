@@ -1,6 +1,7 @@
 package eu.stamp_project.dissector.agent;
 
 
+
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -10,9 +11,11 @@ public class ArgumentsParser {
     // Favor a tailored parser to keep the agent jar as small as possible
     // and to avoid license conflicts/
 
+    static final int DEFAULT_PORT = 2112;
+
     private InputFileParameter inputFileParameter = new InputFileParameter();
     private InstrumenterParameter instrumenterParameter = new InstrumenterParameter();
-    private PortParameter portParameter = new PortParameter();
+    private PortParameter portParameter = new PortParameter(DEFAULT_PORT);
     private FileLoggerParameter fileLoggerParameter = new FileLoggerParameter();
 
     private Parameter[] params = {inputFileParameter, instrumenterParameter, portParameter, fileLoggerParameter};
@@ -53,16 +56,19 @@ public class ArgumentsParser {
         return null;
     }
 
-    public boolean parse(String args) {
-        String[] values = args.split(":");
-        String[] actualArgs = {"", "", "", ""};
-        System.arraycopy(values, 0, actualArgs, 0, values.length);
-        return parse(actualArgs);
-    }
+    public boolean parse(String args) { return parse(args.split(":")); }
 
     public boolean parse(String... args) {
-        for(int i = 0; i < args.length; i++)
-            params[i].set(args[i]);
+
+        if(args == null || args.length == 0) {
+            throw new IllegalArgumentException("Should provide at least one argument");
+        }
+
+        String[] actualArgs = {"", "", "", ""};
+        System.arraycopy(args, 0, actualArgs, 0, args.length);
+
+        for(int i = 0; i < actualArgs.length; i++)
+            params[i].set(actualArgs[i]);
         return !hasErrors();
     }
 
@@ -77,7 +83,7 @@ abstract class Parameter<T> {
 
     public String getError() { return error; }
 
-    public boolean isValid() { return error != null; }
+    public boolean isValid() { return error == null; }
 
     public abstract void set(String argument);
 
@@ -95,10 +101,18 @@ abstract class Parameter<T> {
 
 class PortParameter extends Parameter<Integer> {
 
+    private int defaultPort;
+    public PortParameter(int defaultPort) {
+        this.defaultPort = defaultPort;
+    }
+
     @Override
     public void set(String argument) {
         try {
-            setValue(Integer.parseInt(argument));
+            if (argument == null || argument.equals(""))
+                setValue(defaultPort);
+            else
+                setValue(Integer.parseInt(argument));
         }
         catch (NumberFormatException exc) {
             setError("Invalid port value. Details: " + exc);
@@ -111,6 +125,11 @@ class InstrumenterParameter extends Parameter<MethodInstrumenter> {
 
     @Override
     public void set(String argument) {
+
+        if(argument == null || argument.equals("")) {
+            argument = "invocation";
+        }
+
         argument = argument.trim();
         String name = new StringBuilder("eu.stamp_project.dissector.agent.")
                 .append(Character.toUpperCase(argument.charAt(0)))
@@ -120,7 +139,7 @@ class InstrumenterParameter extends Parameter<MethodInstrumenter> {
 
         try {
             Class clazz = Class.forName(name);
-            if(!MethodInstrumenter.class.isAssignableFrom(clazz)) {
+            if(MethodInstrumenter.class.isAssignableFrom(clazz)) {
                 setValue((MethodInstrumenter) clazz.newInstance());
             }
             else {
@@ -128,7 +147,7 @@ class InstrumenterParameter extends Parameter<MethodInstrumenter> {
             }
         }
         catch(ClassNotFoundException  exc) {
-            setError(String.format("Invalid instrumentation: %s. Class %s does not exists", argument, name));
+            setError(String.format("Invalid instrumentation: %s. Class %s does not exist", argument, name));
         }
         catch(InstantiationException exc) {
             setError(String.format("Invalid instrumentation: %s. Could not create an instance of %s", argument, name));
@@ -143,37 +162,41 @@ class InstrumenterParameter extends Parameter<MethodInstrumenter> {
 class FileLoggerParameter extends Parameter<FileLogger> {
 
 
-    public void set(String argument) {
-        if(argument == null ||  argument.equals("")) {
-            argument = getDefaultPath();
-        }
-        File log = new File(argument);
+    //Receives the folder where the log should be placed
+    public void set(String folder) {
+
+        if(folder == null || folder.equals(""))
+            folder = "./";
+
+        File log = new File(folder, getFileName());
+        String absolutePath = log.getAbsolutePath();
+
         if(log.exists()) {
             if(!log.isFile()) {
-                setError("Log path " + argument + " is not a file.");
+                setError("Log path " + absolutePath + " is not a file.");
                 return;
             }
             if(!log.canWrite()) {
-                setError("Can not write to log file " + argument);
+                setError("Cannot write to log file " + absolutePath);
                 return;
             }
         }
         else {
             try {
                 if(!log.createNewFile()) {
-                    setError("Can not create log file in: " + argument);
+                    setError("Cannot create log file in: " + absolutePath);
                 }
             }
             catch (IOException exc) {
-                setError("Can not create log file in: " + argument + ". Details: " + exc.getMessage());
+                setError("Cannot create log file in: " + absolutePath + ". Details: " + exc.getMessage());
                 return;
             }
         }
         setValue(new FileLogger(log));
     }
 
-    public String getDefaultPath() {
-        return "./dissector-" + getLogSuffix() + ".log";
+    public String getFileName() {
+        return "dissector-" + getLogSuffix() + ".log";
     }
 
     public static String getLogSuffix() {

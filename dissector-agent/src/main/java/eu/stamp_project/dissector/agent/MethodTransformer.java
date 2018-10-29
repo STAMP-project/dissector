@@ -2,6 +2,7 @@ package eu.stamp_project.dissector.agent;
 
 import javassist.*;
 import javassist.bytecode.AccessFlag;
+import javassist.bytecode.Descriptor;
 
 import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
@@ -15,13 +16,14 @@ public class MethodTransformer implements ClassFileTransformer {
         if(targets == null) throw new NullPointerException("Given target aggregation is null");
         if(instrumenter == null) throw new NullPointerException("Instrumenter can not be null");
         this.targets = targets;
+        this.instrumenter = instrumenter;
     }
 
     private Map<String, Set<TargetMethod>> targets;
     private MethodInstrumenter instrumenter;
 
     public byte[] transform(ClassLoader loader,
-                            String className,
+                            String classDescriptor,
                             Class<?> classBeingRedefined,
                             ProtectionDomain protectionDomain,
                             byte[] classFileBuffer)
@@ -29,21 +31,21 @@ public class MethodTransformer implements ClassFileTransformer {
 
         try {
 
-            if(className == null ||!targets.containsKey(className)) { //Weird but might happen
+            if(classDescriptor == null ||!targets.containsKey(classDescriptor)) { //Weird but might happen
                 return classFileBuffer;
             }
 
             ClassPool pool = ClassPool.getDefault();
-            CtClass theClass = pool.get(className.replace('/', '.'));
+            CtClass targetClass = pool.get(Descriptor.toClassName(classDescriptor));
 
-            for(TargetMethod targetMethod : targets.get(className)) {
-                CtBehavior behavior = getBehaviorFromClass(targetMethod, theClass);
+            for(TargetMethod targetMethod : targets.get(classDescriptor)) {
+                CtBehavior behavior = getBehaviorFromClass(targetMethod, targetClass);
                 if (mustSkip(behavior)) continue;
-                instrument(behavior, theClass, targetMethod.line);
+                instrument(behavior, targetClass, targetMethod.line);
             }
 
-            byte[] outputBuffer = theClass.toBytecode();
-            theClass.detach();
+            byte[] outputBuffer = targetClass.toBytecode();
+            targetClass.detach();
 
             return outputBuffer;
 
@@ -75,6 +77,7 @@ public class MethodTransformer implements ClassFileTransformer {
 
     private void instrument(CtBehavior behavior, CtClass inClass, int id) {
         try {
+            //This creates a separate behavior for inherited members
             if (behavior.getMethodInfo().isMethod() && !inClass.equals(behavior.getDeclaringClass())) {
                 CtMethod method = (CtMethod) behavior;
                 behavior = CtNewMethod.delegator(method, inClass);

@@ -8,11 +8,11 @@ public class StackInstrumenter implements MethodInstrumenter {
 
     @Override
     public void instrument(CtBehavior behavior, CtClass inClass, int id) throws CannotCompileException {
-
         behavior.insertBefore(
                 "{"
                         + "Exception exc = new Exception();"
                         + "StringBuilder trace = new StringBuilder();"
+                        + "trace.append(" + id + ").append(\":\");"
                         + "StackTraceElement[] trace = exc.getStackTrace();"
                         + "for(int i = 0; i < trace.length; i++) {"
                             + "StackTraceElement element = trace[i];"
@@ -22,6 +22,5 @@ public class StackInstrumenter implements MethodInstrumenter {
 
                 + "}"
         );
-
     }
 }

@@ -5,6 +5,7 @@ import javassist.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
@@ -65,6 +66,7 @@ public class DissectorAgent {
             JarFile jar = generateTracerJar(0);
 
             logger.log("Probe sender JAR generated at " + jar.getName());
+
             inst.appendToSystemClassLoaderSearch(jar);
 
         }
@@ -82,11 +84,13 @@ public class DissectorAgent {
     }
 
     public static CtClass generateTracerClass(int port) {
+        // The port is actually an early functionality
+        // to use socket communication instead of the process error and output stream.
         try {
-
             ClassPool pool = ClassPool.getDefault();
             CtClass tracerClass = pool.makeClass("eu.stamp_project.instrumentation.CallTracer");
-            CtMethod sendMethod = CtMethod.make("public static void send(java.lang.String message){System.err.println(\"\\n[[D][\" + message + \"]]\");}", tracerClass);
+            String out = port%2==0?"err":"out";
+            CtMethod sendMethod = CtMethod.make("public static void send(java.lang.String message){System." + out + ".println(\"\\n[[D][\" + message + \"]]\");}", tracerClass);
             tracerClass.addMethod(sendMethod);
             return tracerClass;
         }

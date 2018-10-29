@@ -10,8 +10,6 @@ import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.*;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -123,6 +121,33 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
         this._classificationsOfInterest = classificationsOfInterest;
     }
 
+    @Parameter(property="logFolder", defaultValue="${project.build.directory}/dissector-logs/")
+    protected File _logFolder;
+
+    public File getLogFolder() { return _logFolder; }
+
+
+    public void setLogFolder(File logFolder) {
+
+        if(!logFolder.isDirectory()) {
+            throw new IllegalArgumentException("Should specify a folder instead of: " + logFolder.getAbsolutePath());
+        }
+
+        if(!logFolder.exists()) {
+            try {
+                if(!logFolder.createNewFile())
+                    throw new IllegalArgumentException("Could not create folder: " + logFolder.getAbsolutePath());
+            }
+            catch (IOException exc) {
+                throw new IllegalArgumentException("An error occurred while creating the log folder", exc);
+            }
+
+        }
+        _logFolder = logFolder;
+
+    }
+
+
     protected List<String> getTargetMethodsFromFile() throws IOException {
 
         Gson gson = new Gson();
@@ -213,36 +238,6 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
 
     }
 
-    private void monitorProcess(Stream<String> incomming) throws MojoExecutionException {
-
-        final Pattern logPattern = Pattern.compile("\\[\\[D\\]\\[(?<type>.):(?<method>\\d+):(?<thread>\\d+):(?<depth>\\d+)\\]\\]");
-
-        incomming.forEach(line -> {
-            getLog().debug(line);
-
-            Matcher match = logPattern.matcher(line);
-            if (!match.matches()) return;
-
-            String action = match.group("type");
-            int thread = Integer.parseInt(match.group("thread"));
-            int method = Integer.parseInt(match.group("method"));
-            int depth = Integer.parseInt(match.group("depth"));
-
-            switch (action) { //In this case, the switch-case is more readable than an if
-                case ">":
-                    onMethodEnter(thread, method, depth);
-                    break;
-                case "<":
-                    onMethodExit(thread, method, depth);
-                    break;
-                default:
-                    getLog().warn("Unknown action: " + action);
-            }
-        });
-    }
-
-
-
     protected List<String> getTestCommand() throws MojoExecutionException {
         List<String> command = new ArrayList<>();
         command.add("mvn");
@@ -259,8 +254,12 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
     }
 
     protected String getAgentArgs() throws MojoExecutionException {
-        //TODO: Not handling the port yet
-        return String.format("-DargLine=-javaagent:%s=%s", getAgentJarPath(), _methodList.getAbsolutePath());
+        return String.format("-DargLine=-javaagent:%s=%s:%s:%d:%s",
+                getAgentJar(),
+                _methodList.getAbsolutePath(),
+                _port,
+                _logFolder.getAbsolutePath()
+        );
     }
 
     protected String getAgentJarPath() throws MojoExecutionException {
@@ -294,11 +293,12 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
         }
     }
 
+    protected abstract String instrumenter();
+
     protected abstract void prepareExecution() throws MojoExecutionException;
 
-    protected abstract void onMethodExit(int thread, int method, int depth);
-
-    protected abstract void onMethodEnter(int thread, int method, int depth);
+    protected abstract void monitorProcess(Stream<String> output) throws MojoExecutionException;
 
     protected abstract void finishExecution() throws MojoExecutionException;
+
 }

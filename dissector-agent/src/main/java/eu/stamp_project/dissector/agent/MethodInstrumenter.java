@@ -7,6 +7,6 @@ import javassist.CtClass;
 @FunctionalInterface
 public interface MethodInstrumenter {
 
-    public void instrument(CtBehavior behavior, CtClass inClass, int id) throws CannotCompileException;
+    void instrument(CtBehavior behavior, CtClass inClass, int id) throws CannotCompileException;
 
 }
