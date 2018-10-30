@@ -9,6 +9,50 @@
     <version>2.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
+    <url>https://github.com/STAMP-project/dissector.git</url>
+
+    <organization>
+        <name>STAMP-Project</name>
+        <url>http://github.com/STAMP-project</url>
+    </organization>
+
+    <licenses>
+        <license>
+            <name>GNU Lesser General Public License v3.0</name>
+            <url>https://github.com/STAMP-project/dissector/blob/master/LICENSE</url>
+        </license>
+    </licenses>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/STAMP-project/dissector/issues</url>
+    </issueManagement>
+
+    <developers>
+        <developer>
+            <name>Oscar Luis Vera Pérez</name>
+            <email>oscar.vera-perez@inria.fr</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com:STAMP-project/dissector.git</connection>
+        <developerConnection>scm:git:git@github.com:STAMP-project/dissector.git</developerConnection>
+        <url>https://github.com/STAMP-project/dissector</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh-snapshots</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
