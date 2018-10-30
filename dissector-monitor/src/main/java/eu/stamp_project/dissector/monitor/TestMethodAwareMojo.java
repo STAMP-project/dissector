@@ -13,7 +13,7 @@ public interface TestMethodAwareMojo {
 
     default Set<String> getTestMethods() {
         MavenProject project = getProject();
-        getLog().debug("Collecting from: " + project.getBuild().getTestOutputDirectory());
+        getLog().debug("Collecting test methods from: " + project.getBuild().getTestOutputDirectory());
         return new MethodCollector(project.getBuild().getTestOutputDirectory()).collect();
     }
 

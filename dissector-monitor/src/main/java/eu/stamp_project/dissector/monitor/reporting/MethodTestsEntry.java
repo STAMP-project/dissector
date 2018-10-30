@@ -1,11 +1,11 @@
-package eu.stamp_project.dissector.monitor;
+package eu.stamp_project.dissector.monitor.reporting;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MethodEntry {
+public class MethodTestsEntry {
 
-    public MethodEntry(String name) {
+    public MethodTestsEntry(String name) {
         method = name;
         tests = new ArrayList<>();
     }

@@ -1,6 +1,8 @@
 package eu.stamp_project.dissector.agent;
 import org.hamcrest.MatcherAssert;
 
+import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -22,6 +24,16 @@ public class ArgumentsParserTest {
         parser = new ArgumentsParser();
         inputPath = Files.createTempFile("test", "input").toAbsolutePath().toString();
         logFolderPath = Files.createTempDirectory("test").toAbsolutePath().toString();
+    }
+
+    @AfterClass
+    public static void removeLogFiles() throws IOException {
+        Files.list(Paths.get("./"))
+                .filter(path -> {
+                    String fileName = path.getFileName().toString();
+                    return fileName.startsWith("dissector-") && fileName.endsWith(".log");
+                })
+                .forEach(path -> path.toFile().delete());
     }
 
     @Test

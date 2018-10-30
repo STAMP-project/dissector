@@ -1,4 +1,8 @@
-package eu.stamp_project.dissector.monitor;
+package eu.stamp_project.dissector.monitor.emulation;
+
+import eu.stamp_project.dissector.monitor.MethodSet;
+import eu.stamp_project.dissector.monitor.reporting.MethodTestsEntry;
+import eu.stamp_project.dissector.monitor.reporting.TestEntry;
 
 import java.util.*;
 
@@ -69,16 +73,16 @@ public class ProcessEmulator {
     }
 
 
-    public List<MethodEntry> getReport() {
+    public List<MethodTestsEntry> getReport() {
 
         StackEmulator.StackDistance[] distances = getSortedDistances(getAllDistances());
-        List<MethodEntry> report = new LinkedList<>();
+        List<MethodTestsEntry> report = new LinkedList<>();
 
         if(distances.length == 0) return report;
 
         StackEmulator.StackDistance dist = distances[0];
 
-        MethodEntry methodEntry = new MethodEntry(methods.getName(dist.method));
+        MethodTestsEntry methodEntry = new MethodTestsEntry(methods.getName(dist.method));
         TestEntry testEntry = new TestEntry(methods.getName(dist.test), dist.distance);
         methodEntry.getTests().add(testEntry);
         report.add(methodEntry);
@@ -87,7 +91,7 @@ public class ProcessEmulator {
 
             if(dist.method != distances[i].method) {
                 dist = distances[i];
-                methodEntry = new MethodEntry(methods.getName(dist.method));
+                methodEntry = new MethodTestsEntry(methods.getName(dist.method));
                 testEntry = new TestEntry(methods.getName(dist.test), dist.distance);
                 methodEntry.getTests().add(testEntry);
                 report.add(methodEntry);

@@ -2,7 +2,7 @@ package eu.stamp_project.dissector.monitor;
 
 import org.apache.maven.plugin.MojoExecutionException;
 
-public class CallGraphMojo extends InvocationMonitorMojo {
+public class CallGraphMonitorMojo extends InvocationMonitorMojo {
 
     @Override
     protected void prepareExecution() throws MojoExecutionException {

@@ -4,11 +4,14 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.apache.maven.plugin.Mojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -128,23 +131,25 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
 
 
     public void setLogFolder(File logFolder) {
+        createFolderIfNeeded(logFolder);
+        _logFolder = logFolder;
+    }
 
-        if(!logFolder.isDirectory()) {
-            throw new IllegalArgumentException("Should specify a folder instead of: " + logFolder.getAbsolutePath());
-        }
-
-        if(!logFolder.exists()) {
+    private String createFolderIfNeeded(File folder) {
+        if(!folder.exists()) {
             try {
-                if(!logFolder.createNewFile())
-                    throw new IllegalArgumentException("Could not create folder: " + logFolder.getAbsolutePath());
+                Files.createDirectory(Paths.get(folder.getAbsolutePath()));
             }
-            catch (IOException exc) {
+            catch(IOException exc) {
                 throw new IllegalArgumentException("An error occurred while creating the log folder", exc);
             }
-
         }
-        _logFolder = logFolder;
-
+        else {
+            if(!folder.isDirectory()){
+                throw new IllegalArgumentException("Should specify a folder instead of: " + folder.getAbsolutePath());
+            }
+        }
+        return folder.getAbsolutePath();
     }
 
 
@@ -225,11 +230,26 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
             InputStreamReader inputReader = new InputStreamReader(testProcess.getErrorStream());
             BufferedReader bufferedReader = new BufferedReader(inputReader);
 
-            monitorProcess(bufferedReader.lines());
+            String line = null;
+
+            while((line = bufferedReader.readLine()) != null) {
+                processLine(line);
+            }
+
+            //monitorProcess(bufferedReader.lines());
+
+            testProcess.waitFor();
+
+            if(testProcess.exitValue() != 0) {
+                getLog().error("Test process ended with exit value: " + testProcess.exitValue());
+            }
 
         }
         catch (IOException exc) {
             throw new MojoExecutionException("Failed to execute the test process", exc);
+        }
+        catch (InterruptedException exc) {
+            throw new MojoExecutionException("Test process was interrupted", exc);
         }
         finally {
             if(testProcess != null && testProcess.isAlive())
@@ -237,6 +257,8 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
         }
 
     }
+
+
 
     protected List<String> getTestCommand() throws MojoExecutionException {
         List<String> command = new ArrayList<>();
@@ -255,10 +277,11 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
 
     protected String getAgentArgs() throws MojoExecutionException {
         return String.format("-DargLine=-javaagent:%s=%s:%s:%d:%s",
-                getAgentJar(),
+                getAgentJarPath(),
                 _methodList.getAbsolutePath(),
+                instrumenter(),
                 _port,
-                _logFolder.getAbsolutePath()
+                createFolderIfNeeded(_logFolder)
         );
     }
 
@@ -297,7 +320,9 @@ public abstract class DynamicDissectorMojo extends DissectorMojo {
 
     protected abstract void prepareExecution() throws MojoExecutionException;
 
-    protected abstract void monitorProcess(Stream<String> output) throws MojoExecutionException;
+    protected abstract void processLine(String line) throws MojoExecutionException;
+
+    //protected abstract void monitorProcess(Stream<String> output) throws MojoExecutionException;
 
     protected abstract void finishExecution() throws MojoExecutionException;
 

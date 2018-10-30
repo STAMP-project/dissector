@@ -1,4 +1,6 @@
-package eu.stamp_project.dissector.monitor;
+package eu.stamp_project.dissector.monitor.emulation;
+
+import eu.stamp_project.dissector.monitor.MethodSet;
 
 import java.util.HashSet;
 import java.util.Set;

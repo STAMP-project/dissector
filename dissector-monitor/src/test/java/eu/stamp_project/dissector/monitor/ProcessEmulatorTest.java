@@ -1,6 +1,9 @@
 package eu.stamp_project.dissector.monitor;
 
 
+import eu.stamp_project.dissector.monitor.emulation.ProcessEmulator;
+import eu.stamp_project.dissector.monitor.reporting.MethodTestsEntry;
+import eu.stamp_project.dissector.monitor.reporting.TestEntry;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -42,10 +45,10 @@ public class ProcessEmulatorTest {
         emulator.exit(1,0, 1);
 
         assertFalse(emulator.isCorrupt());
-        List<MethodEntry> report = emulator.getReport();
+        List<MethodTestsEntry> report = emulator.getReport();
         assertThat(report, hasSize(2));
 
-        for(MethodEntry entry : report) {
+        for(MethodTestsEntry entry : report) {
             List<TestEntry> testReport = entry.getTests();
             assertThat(testReport, hasSize(1));
             TestEntry test = testReport.get(0);
@@ -80,10 +83,10 @@ public class ProcessEmulatorTest {
 
         assertFalse(emulator.isCorrupt());
 
-        List<MethodEntry> report = emulator.getReport();
+        List<MethodTestsEntry> report = emulator.getReport();
         assertThat(report, hasSize(1));
 
-        MethodEntry entry = report.get(0);
+        MethodTestsEntry entry = report.get(0);
         List<TestEntry> testReport = entry.getTests();
 
         assertThat(testReport, hasSize(1));

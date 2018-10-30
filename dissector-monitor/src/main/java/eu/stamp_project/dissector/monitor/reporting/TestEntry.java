@@ -1,4 +1,4 @@
-package eu.stamp_project.dissector.monitor;
+package eu.stamp_project.dissector.monitor.reporting;
 
 import java.util.ArrayList;
 import java.util.List;

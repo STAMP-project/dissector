@@ -32,7 +32,7 @@ public class ArgumentsParser {
         return inputFileParameter.get();
     }
 
-    public MethodInstrumenter getInstrumenter() {
+    public BehaviorInstrumenter getInstrumenter() {
         return instrumenterParameter.get();
     }
 
@@ -87,7 +87,7 @@ abstract class Parameter<T> {
 
     public abstract void set(String argument);
 
-    private T value;
+    protected T value;
     protected void setValue(T value) {
         this.value = value;
 
@@ -121,7 +121,7 @@ class PortParameter extends Parameter<Integer> {
 
 }
 
-class InstrumenterParameter extends Parameter<MethodInstrumenter> {
+class InstrumenterParameter extends Parameter<BehaviorInstrumenter> {
 
     @Override
     public void set(String argument) {
@@ -139,8 +139,8 @@ class InstrumenterParameter extends Parameter<MethodInstrumenter> {
 
         try {
             Class clazz = Class.forName(name);
-            if(MethodInstrumenter.class.isAssignableFrom(clazz)) {
-                setValue((MethodInstrumenter) clazz.newInstance());
+            if(BehaviorInstrumenter.class.isAssignableFrom(clazz)) {
+                setValue((BehaviorInstrumenter) clazz.newInstance());
             }
             else {
                 setError(String.format("Invalid instrumentation: %s. The class %s does not implement MethodInstrumenter", argument, clazz.getName()));
@@ -188,11 +188,16 @@ class FileLoggerParameter extends Parameter<FileLogger> {
                 }
             }
             catch (IOException exc) {
-                setError("Cannot create log file in: " + absolutePath + ". Details: " + exc.getMessage());
+                setError("Cannot create log file in: " + absolutePath + ". Details: " + exc);
                 return;
             }
         }
-        setValue(new FileLogger(log));
+        try {
+            setValue(new FileLogger(log));
+        }
+        catch(IOException exc) {
+            setError("Error while creating the file logger instance. Details: " + exc);
+        }
     }
 
     public String getFileName() {

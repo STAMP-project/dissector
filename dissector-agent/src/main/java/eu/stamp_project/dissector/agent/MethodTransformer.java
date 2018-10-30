@@ -12,7 +12,7 @@ import java.util.Set;
 
 public class MethodTransformer implements ClassFileTransformer {
 
-    public MethodTransformer(Map<String, Set<TargetMethod>> targets, MethodInstrumenter instrumenter) {
+    public MethodTransformer(Map<String, Set<TargetMethod>> targets, BehaviorInstrumenter instrumenter) {
         if(targets == null) throw new NullPointerException("Given target aggregation is null");
         if(instrumenter == null) throw new NullPointerException("Instrumenter can not be null");
         this.targets = targets;
@@ -20,10 +20,10 @@ public class MethodTransformer implements ClassFileTransformer {
     }
 
     private Map<String, Set<TargetMethod>> targets;
-    private MethodInstrumenter instrumenter;
+    private BehaviorInstrumenter instrumenter;
 
     public byte[] transform(ClassLoader loader,
-                            String classDescriptor,
+                            String internalName,
                             Class<?> classBeingRedefined,
                             ProtectionDomain protectionDomain,
                             byte[] classFileBuffer)
@@ -31,14 +31,14 @@ public class MethodTransformer implements ClassFileTransformer {
 
         try {
 
-            if(classDescriptor == null ||!targets.containsKey(classDescriptor)) { //Weird but might happen
+            if(internalName == null || !targets.containsKey(internalName)) {
                 return classFileBuffer;
             }
 
             ClassPool pool = ClassPool.getDefault();
-            CtClass targetClass = pool.get(Descriptor.toClassName(classDescriptor));
+            CtClass targetClass = pool.get(internalName.replace('/', '.'));
 
-            for(TargetMethod targetMethod : targets.get(classDescriptor)) {
+            for(TargetMethod targetMethod : targets.get(internalName)) {
                 CtBehavior behavior = getBehaviorFromClass(targetMethod, targetClass);
                 if (mustSkip(behavior)) continue;
                 instrument(behavior, targetClass, targetMethod.line);
@@ -83,7 +83,7 @@ public class MethodTransformer implements ClassFileTransformer {
                 behavior = CtNewMethod.delegator(method, inClass);
                 inClass.addMethod((CtMethod) behavior);
             }
-            instrumenter.instrument(behavior, inClass, id);
+            instrumenter.instrument(behavior, id);
             behaviorInstrumented.invokeWith(behavior);
         }
         catch (CannotCompileException exc) {

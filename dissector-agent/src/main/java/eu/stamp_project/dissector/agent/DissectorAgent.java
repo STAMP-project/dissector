@@ -35,6 +35,8 @@ public class DissectorAgent {
 
         FileLogger logger = parser.getFileLogger();
 
+        logger.logWithTime("Started logging");
+
         if(parser.hasErrors()) {
             logger.log("argument error", parser.getError());
             System.exit(ARGUMENT_ERROR);
@@ -65,7 +67,7 @@ public class DissectorAgent {
             logger.logWithTime("Attaching the tracer jar");
             JarFile jar = generateTracerJar(0);
 
-            logger.log("Probe sender JAR generated at " + jar.getName());
+            logger.logWithTime("Probe sender JAR generated at " + jar.getName());
 
             inst.appendToSystemClassLoaderSearch(jar);
 
