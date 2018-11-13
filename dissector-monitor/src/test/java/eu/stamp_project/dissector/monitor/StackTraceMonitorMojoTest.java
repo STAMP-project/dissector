@@ -38,9 +38,11 @@ public class StackTraceMonitorMojoTest {
         mojo.targetsForTheAgent = methods;
 
         mojo.processLine("[[D][0:<File.java:to.Class1:dummyMethod:1><File.java:to.Class1:another:2>]]");
+        mojo.processLine("[[D][0:<File.java:to.Class1:dummyMethod:1><File.java:to.Class1:another:2>]]");
 
         MethodTracesEntry[] report = mojo.buildReport();
         assertEquals(methods.size(), report.length);
+        assertEquals("There should be only one trace", 1, report[0].getTraces().size());
         assertEquals("There should be only 2 entries in the report", 2, report[0].getTraces().get(0).length);
 
     }
