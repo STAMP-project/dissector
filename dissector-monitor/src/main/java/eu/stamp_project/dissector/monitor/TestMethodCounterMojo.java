@@ -23,7 +23,7 @@ public class TestMethodCounterMojo extends DissectorMojo implements TestMethodAw
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         Set<String> methods = getTestMethods();
-        getLog().info(methods.size() + " test methods collectec");
+        getLog().info(methods.size() + " test methods collected");
         saveReport(methods);
     }
 
